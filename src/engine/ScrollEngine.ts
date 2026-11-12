@@ -195,18 +195,23 @@ export class ScrollEngine {
    * to transparent NPC sprites without changing the dialogue layer.
    */
   private addEncounterMarkers(): void {
+    this.encounterLayer.sortableChildren = true;
     for (const encounter of ENCOUNTERS) {
       const marker = new Container();
-      const ring = new Graphics().circle(0, 0, 16)
-        .stroke({ color: 0xf8e7c1, width: 2.2, alpha: 0.9 });
-      const center = new Graphics().circle(0, 0, 7)
-        .fill({ color: encounter.time === 'night' ? 0xf5b36b : 0x9b713f, alpha: 0.98 })
-        .circle(0, 0, 3).fill({ color: 0xfff1cc });
+      const ring = new Graphics().circle(0, 0, 13)
+        .stroke({ color: 0xf8e7c1, width: 1.7, alpha: 0.9 });
+      const center = new Graphics().circle(0, 0, 5.5)
+        .fill({ color: encounter.time === 'night' ? 0xf5b36b : 0x9b8a5c, alpha: 0.94 })
+        .circle(0, 0, 2.2).fill({ color: 0xfff6df });
       marker.position.set(encounter.worldX, encounter.worldY);
+      marker.zIndex = encounter.worldY;
       marker.addChild(ring, center);
       marker.eventMode = 'static';
       marker.cursor = 'pointer';
-      marker.hitArea = { contains: (x: number, y: number) => x * x + y * y <= 27 * 27 };
+      marker.alpha = 0.94;
+      marker.hitArea = { contains: (x: number, y: number) => x * x + y * y <= 30 * 30 };
+      marker.on('pointerover', () => { marker.alpha = 1; marker.scale.set(1.035); });
+      marker.on('pointerout', () => { marker.alpha = 0.94; marker.scale.set(1); });
       marker.on('pointertap', () => {
         if (encounter.time !== this.time) return;
         this.walkDirection = 0;
@@ -232,13 +237,18 @@ export class ScrollEngine {
         sprite.width = encounter.spriteWidth;
         sprite.height = encounter.spriteWidth * texture.height / texture.width;
         sprite.eventMode = 'none';
-        sprite.alpha = encounter.time === 'night' ? 0.95 : 1;
+        sprite.alpha = encounter.id === 'night-stage' ? 0.95 : 0.91;
         marker.addChildAt(sprite, 0);
-        // Click anywhere on the illustration, including the original small ring.
+        // Move the discovery pin above the small figure, not over its body.
+        const pinY = -sprite.height - 9;
+        marker.getChildAt(1).position.y = pinY;
+        marker.getChildAt(2).position.y = pinY;
+        // Keep a generous invisible touch target even after shrinking the art.
+        const hitHalfWidth = Math.max(42, encounter.spriteWidth * 0.72);
         marker.hitArea = {
           contains: (x: number, y: number) =>
-            Math.abs(x) < encounter.spriteWidth * 0.51 &&
-            y > -sprite.height && y < 22,
+            Math.abs(x) < hitHalfWidth &&
+            y > -sprite.height - 34 && y < 30,
         };
         this.encounterSprites.set(encounter.id, sprite);
       } catch (error) {
@@ -263,11 +273,13 @@ export class ScrollEngine {
   }
 
   setNightControls(next: NightControls): void {
-    const enteringBoat = this.nightControls.view !== next.view && next.view === 'boat';
+    const viewChanged = this.nightControls.view !== next.view;
     this.nightControls = next;
-    if (this.time === 'night' && enteringBoat) {
-      // Camera-only prototype, boat interior art is not supplied yet.
-      this.cameraTarget = 1525 - this.host.clientWidth / (2 * this.zoom);
+    if (this.time === 'night' && viewChanged) {
+      // Reframe the painted river around the boat; the mode remains a viewing
+      // composition, not a claim of a navigable first-person boat interior.
+      const targetX = next.view === 'boat' ? 1798 : 1326;
+      this.cameraTarget = targetX - this.host.clientWidth / (2 * this.zoom);
     }
     this.applyCamera();
   }
@@ -344,7 +356,9 @@ export class ScrollEngine {
   };
 
   private onKeyDown = (event: KeyboardEvent): void => {
-    if (event.target instanceof HTMLButtonElement || event.target instanceof HTMLInputElement) return;
+    const target = event.target;
+    if (target instanceof HTMLElement &&
+      (target.isContentEditable || ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
     if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') {
       this.setWalkDirection(-1); event.preventDefault();
     } else if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') {

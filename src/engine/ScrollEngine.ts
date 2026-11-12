@@ -1,5 +1,5 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
-import { ENCOUNTERS, type EncounterId, type NightView } from '../content/encounters';
+import { ENCOUNTERS, type EncounterId } from '../content/encounters';
 import { NightEffects, type NightControls } from './NightEffects';
 import {
   PLACES, WORLD_HEIGHT, WORLD_WIDTH, artworkForTime,

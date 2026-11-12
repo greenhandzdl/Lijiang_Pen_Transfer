@@ -86,6 +86,8 @@ export default function App() {
     setMusicPlaying(false);
     setMusicError('');
     setWalking(0);
+    setActiveEncounter(null);
+    setHelp(false);
     setEntered(false);
   };
 
@@ -103,6 +105,10 @@ export default function App() {
   const openEncounter = (id: EncounterId) => {
     const encounter = findEncounter(id);
     if (encounter.time !== time) return;
+    if (activeEncounter === id) {
+      closeEncounter();
+      return;
+    }
     setPlace(encounter.place);
     setActiveEncounter(id);
     setEncounterReply('');
@@ -112,6 +118,38 @@ export default function App() {
     setActiveEncounter(null);
     setEncounterReply('');
   };
+
+  const navigatePlace = (id: PlaceId) => {
+    setPlace(id);
+    closeEncounter();
+  };
+
+  const changeMode = (nextMode: VisitMode) => {
+    setMode(nextMode);
+    setWalking(0);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (activeEncounter) closeEncounter();
+        if (help) setHelp(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeEncounter, help]);
+
+  useEffect(() => {
+    const stopWhenHidden = () => {
+      if (document.hidden && musicRef.current?.playing) {
+        musicRef.current.stop();
+        setMusicPlaying(false);
+      }
+    };
+    document.addEventListener('visibilitychange', stopWhenHidden);
+    return () => document.removeEventListener('visibilitychange', stopWhenHidden);
+  }, []);
 
   const chooseDialogue = (choice: DialogueChoice) => {
     setEncounterReply(choice.answer);
@@ -139,7 +177,7 @@ export default function App() {
   const moveOne = (offset: number) => {
     const index = PLACES.findIndex((p) => p.id === place);
     const next = PLACES[Math.max(0, Math.min(PLACES.length - 1, index + offset))];
-    setPlace(next.id);
+    navigatePlace(next.id);
   };
   const magnify = (factor: number) => {
     setZoomFactor(factor);
@@ -158,17 +196,20 @@ export default function App() {
   if (!entered) {
     return (
       <main className="home">
-        <div className="home-gallery" aria-label="漓江三张独立高清画卷，四个体验时段">
-          {['scene-day.webp', 'scene-dusk.webp', 'scene-night.webp'].map((file) => (
-            <img key={file} className={`home-gallery-image ${TIMES.find((item) => item.id === time)?.image === file ? 'visible' : ''}`}
-              src={art(file)} alt={`${file === 'scene-day.webp' ? '白昼' : file === 'scene-dusk.webp' ? '夕照' : '入夜'}漓江原幅画卷`}
-              fetchPriority={file === 'scene-day.webp' ? 'high' : 'auto'} />
-          ))}
+        <div className="home-gallery" aria-label="漓江互动长卷首页原幅插画">
+          <img className="home-gallery-image visible" src={art('home-background.webp')}
+            alt="桂林漓江青绿山水长卷，群峰、双塔、古桥与江上游船" fetchPriority="high" />
         </div>
         <div className="home-wash" aria-hidden="true" />
         <header className="home-header">
           <div className="home-brand"><span className="seal">漓</span><span>桂林 · 漓江<br /><small>山水长卷 · 互动游历</small></span></div>
-          <span className="home-header-note">以山水为卷 · 以脚步为笔</span>
+          <div className="home-header-tools">
+            <span className="home-header-note">以山水为卷 · 以脚步为笔</span>
+            <div className="home-time-wrap">
+              <span className="home-time-label">一日四境</span>
+              <TimeSwitcher time={time} onTime={selectTime} />
+            </div>
+          </div>
         </header>
         <section className="home-intro">
           <div className="accent-line" />
@@ -185,15 +226,12 @@ export default function App() {
             </button>
           </div>
         </section>
-        <div className="home-bottom">
-          <div className="home-times">
-            <span>一日四境</span>
-            <TimeSwitcher time={time} onTime={selectTime} />
-            <small>{TIMES.find((item) => item.id === time)?.caption}</small>
+        <footer className="home-bottom">
+          <div className="home-route" aria-label="游历路线">
+            <span>象鼻山</span><i /><span>日月双塔</span><i /><span>阳桥</span><i /><span>玻璃桥</span>
           </div>
-          <div className="home-route">象鼻山 <i /> 日月双塔 <i /> 阳桥 <i /> 玻璃桥</div>
-          <span className="home-copyright">原幅高清画卷 · 互动 Demo 0.4</span>
-        </div>
+          <span className="home-copyright">原幅高清画卷 · 随时辰入画</span>
+        </footer>
       </main>
     );
   }
@@ -217,15 +255,15 @@ export default function App() {
       </header>
       <div className="scene-time"><TimeSwitcher time={time} onTime={selectTime} compact /></div>
       <div className="scene-label">桂林山水 · 四景入卷</div>
-      <aside className="encounter-rail" aria-label="当前时辰可体验的互动">
-        <span className="encounter-eyebrow">此时 · 人间故事</span>
+      <aside className="encounter-rail" aria-label="画中可发现的故事">
+        <span className="encounter-eyebrow">画中故事</span>
         {encountersFor(time).length ? encountersFor(time).map((encounter) => (
           <button key={encounter.id} type="button" className={activeEncounter === encounter.id ? 'active' : ''}
             onClick={() => openEncounter(encounter.id)} aria-expanded={activeEncounter === encounter.id}>
-            <span className="encounter-dot" aria-hidden="true">◈</span>
+            <span className="encounter-dot" aria-hidden="true">◦</span>
             <span><strong>{encounter.title}</strong><small>{encounter.kicker}</small></span>
           </button>
-        )) : <p className="encounter-rest">夕照宜静观 · 移卷看山水</p>}
+        )) : <p className="encounter-rest">此刻宜静观山水</p>}
       </aside>
       {activeEncounter && findEncounter(activeEncounter).time === time && (
         <section className="encounter-sheet" role="region" aria-label={`${findEncounter(activeEncounter).title}互动`}>
@@ -286,23 +324,28 @@ export default function App() {
         {PLACES.map((item, index) => (
           <button className={item.id === place ? 'selected' : ''} key={item.id}
             aria-current={item.id === place ? 'location' : undefined}
-            onClick={() => setPlace(item.id)}>
+            onClick={() => navigatePlace(item.id)}>
             <small>{String(index + 1).padStart(2, '0')}</small><strong>{item.name}</strong>
           </button>
         ))}
       </nav>
       <footer className="scene-controls">
-        <div className="control-walk" aria-label="人物行走">
-          <button {...holdToWalk(-1)} title="左行（按住）" aria-label="按住向左走">←</button>
-          <button {...holdToWalk(1)} title="右行（按住）" aria-label="按住向右走">→</button>
-          <span>按住行走</span>
+        <div className="scene-mode-switch" role="group" aria-label="选择游览方式">
+          <button className={mode === 'free' ? 'active' : ''} aria-pressed={mode === 'free'}
+            onClick={() => changeMode('free')}>漫游</button>
+          <button className={mode === 'guided' ? 'active' : ''} aria-pressed={mode === 'guided'}
+            onClick={() => changeMode('guided')}>导览</button>
         </div>
-        <div className="scroll-progress"><span>卷首</span><div className="progress-track"><i style={{ width: `${progress * 100}%` }} /></div><span>卷尾</span></div>
+        <div className="control-walk" aria-label="人物行走">
+          <button {...holdToWalk(-1)} title="按住向左行走" aria-label="按住向左走">←</button>
+          <button {...holdToWalk(1)} title="按住向右行走" aria-label="按住向右走">→</button>
+        </div>
+        <div className="scroll-progress" aria-label={`画卷位置 ${Math.round(progress * 100)}%`}>
+          <span>卷首</span><div className="progress-track"><i style={{ width: `${progress * 100}%` }} /></div><span>卷尾</span>
+        </div>
         <div className="control-view" aria-label="画卷视图控制">
-          <button onClick={() => moveOne(-1)} title="上一景" aria-label="上一景">‹</button>
           <button onClick={() => magnify(1 / 1.16)} title="缩小" aria-label="缩小">−</button>
           <button onClick={() => magnify(1.16)} title="放大" aria-label="放大">＋</button>
-          <button onClick={() => moveOne(1)} title="下一景" aria-label="下一景">›</button>
         </div>
       </footer>
       {!ready && !error && <div className="scene-loading" role="status"><div className="loading-ornament">◈</div>山水正在徐徐展开…<small>正在载入三时辰原幅无损画卷</small></div>}

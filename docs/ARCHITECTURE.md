@@ -51,3 +51,7 @@ ScrollEngine.ts [Pixi Application + 世界坐标 + 相机 + 角色 + 水纹 + �
 `src/content/encounters.ts` 的每个热点包含 `spriteFile / spriteWidth / worldX / worldY`。引擎加载原有无损背景和人物后即可进入场景；四张次要透明插画随后通过 `Promise.all(... Assets.load)` 异步加载，单张出错只保留可用热区，不产生黑屏。
 
 夜间独立音频控制器 `src/engine/NightMusic.ts` 在 React 用户真实点击后才创建 `AudioContext → MediaElementSource → AnalyserNode → destination`；`ScrollEngine.tick` 读取 `sampleEnergy()`，不通过 React 60FPS 更新状态。`NightEffects` 在 music=true 时取消程序化节拍、改用真实 FFT 值。停播/退出夜景清零能量，默认静音并尊重减少动画偏好。
+
+## 独立 Three.js 场景（M0.4）
+
+入口与卷尾是**相互隔离的 3D 过场**，不改变原有 Pixi 世界的纹理/坐标：`src/app/ElephantIntro.tsx` 管理过场字幕、诗词、跳过/返回；`src/engine/ElephantIntroScene.ts` 负责立体几何、材质、三维相机与销毁。通过 React `lazy` 与动态 import 按需加载；主要画卷依然只有 PixiJS。Three.js WebGL 资源在进入/返回长卷时释放。详细分镜与限制见 [INTRO_SEQUENCE.md](INTRO_SEQUENCE.md)。

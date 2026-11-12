@@ -1,5 +1,6 @@
 import { useState, type PointerEvent as ReactPointerEvent } from 'react';
 import ScrollStage from './ScrollStage';
+import { encountersFor, findEncounter, type EncounterId, type DialogueChoice, type NightView } from '../content/encounters';
 import {
   PLACES, TIMES, getPlace,
   type PlaceId, type TimeOfDay, type VisitMode,
@@ -27,7 +28,15 @@ function TimeSwitcher({ time, onTime, compact = false }: {
 export default function App() {
   const [entered, setEntered] = useState(false);
   const [mode, setMode] = useState<VisitMode>('guided');
-  const [time, setTime] = useState<TimeOfDay>('day');
+  const [time, setTime] = useState<TimeOfDay>('morning');
+  const [activeEncounter, setActiveEncounter] = useState<EncounterId | null>(null);
+  const [encounterReply, setEncounterReply] = useState('');
+  const [nightView, setNightView] = useState<NightView>('shore');
+  const [nightLights, setNightLights] = useState(false);
+  const [nightRhythm, setNightRhythm] = useState(false);
+  const [nightDrones, setNightDrones] = useState(false);
+  const [previewId, setPreviewId] = useState<EncounterId>('cormorant');
+  const [previewNumber, setPreviewNumber] = useState(0);
   const [place, setPlace] = useState<PlaceId>('elephant');
   const [walking, setWalking] = useState(0);
   const [progress, setProgress] = useState(0.08);
@@ -39,12 +48,41 @@ export default function App() {
   const [zoomNumber, setZoomNumber] = useState(0);
   const [zoomFactor, setZoomFactor] = useState(1);
 
+  const selectTime = (next: TimeOfDay) => {
+    setTime(next);
+    setActiveEncounter(null);
+    setEncounterReply('');
+  };
+
+  const openEncounter = (id: EncounterId) => {
+    const encounter = findEncounter(id);
+    if (encounter.time !== time) return;
+    setPlace(encounter.place);
+    setActiveEncounter(id);
+    setEncounterReply('');
+  };
+
+  const closeEncounter = () => {
+    setActiveEncounter(null);
+    setEncounterReply('');
+  };
+
+  const chooseDialogue = (choice: DialogueChoice) => {
+    setEncounterReply(choice.answer);
+    if (choice.navigateTo) setPlace(choice.navigateTo);
+    if (choice.splash && activeEncounter) {
+      setPreviewId(activeEncounter);
+      setPreviewNumber((count) => count + 1);
+    }
+  };
+
   const selectMode = (newMode: VisitMode) => {
     setMode(newMode);
     setEntered(true);
     setReady(false);
     setError('');
     setPlace('elephant');
+    closeEncounter();
   };
   const trigger = (type: 'gaze' | 'song') => {
     setActionType(type);
@@ -72,11 +110,11 @@ export default function App() {
   if (!entered) {
     return (
       <main className="home">
-        <div className="home-gallery" aria-label="漓江三时辰全景画卷">
-          {TIMES.map((item) => (
-            <img key={item.id} className={`home-gallery-image ${time === item.id ? 'visible' : ''}`}
-              src={art(item.image)} alt={`${item.label}的漓江青绿山水画卷`}
-              fetchPriority={item.id === 'day' ? 'high' : 'auto'} />
+        <div className="home-gallery" aria-label="漓江三张独立高清画卷，四个体验时段">
+          {['scene-day.webp', 'scene-dusk.webp', 'scene-night.webp'].map((file) => (
+            <img key={file} className={`home-gallery-image ${TIMES.find((item) => item.id === time)?.image === file ? 'visible' : ''}`}
+              src={art(file)} alt={`${file === 'scene-day.webp' ? '白昼' : file === 'scene-dusk.webp' ? '夕照' : '入夜'}漓江原幅画卷`}
+              fetchPriority={file === 'scene-day.webp' ? 'high' : 'auto'} />
           ))}
         </div>
         <div className="home-wash" aria-hidden="true" />
@@ -101,12 +139,12 @@ export default function App() {
         </section>
         <div className="home-bottom">
           <div className="home-times">
-            <span>一日三景</span>
-            <TimeSwitcher time={time} onTime={setTime} />
+            <span>一日四境</span>
+            <TimeSwitcher time={time} onTime={selectTime} />
             <small>{TIMES.find((item) => item.id === time)?.caption}</small>
           </div>
           <div className="home-route">象鼻山 <i /> 日月双塔 <i /> 阳桥 <i /> 玻璃桥</div>
-          <span className="home-copyright">原幅高清画卷 · Demo 0.2</span>
+          <span className="home-copyright">原幅高清画卷 · 互动 Demo 0.3</span>
         </div>
       </main>
     );
@@ -116,24 +154,77 @@ export default function App() {
   return (
     <main className="experience">
       <ScrollStage mode={mode} time={time} target={place} walking={walking}
+        nightView={nightView} nightLights={nightLights} nightRhythm={nightRhythm} nightDrones={nightDrones}
+        previewId={previewId} previewNumber={previewNumber}
         actionNumber={actionNumber} actionType={actionType}
         zoomNumber={zoomNumber} zoomFactor={zoomFactor}
-        onReady={() => setReady(true)} onPlace={setPlace} onPosition={setProgress} onError={setError} />
+        onReady={() => setReady(true)} onPlace={setPlace} onEncounter={openEncounter}
+        onPosition={setProgress} onError={setError} />
       <div className="scene-frame" aria-hidden="true" />
       <header className="scene-header">
         <button className="back-button" onClick={() => { setWalking(0); setEntered(false); }}>← 回到卷首</button>
         <div className="scene-brand"><span className="scene-seal">漓</span><span>漓江 <em>· 移笔游目</em></span></div>
         <button className="info-button" onClick={() => setHelp(true)}>游目指南 <span>ⓘ</span></button>
       </header>
-      <div className="scene-time"><TimeSwitcher time={time} onTime={setTime} compact /></div>
+      <div className="scene-time"><TimeSwitcher time={time} onTime={selectTime} compact /></div>
       <div className="scene-label">桂林山水 · 四景入卷</div>
+      <aside className="encounter-rail" aria-label="当前时辰可体验的互动">
+        <span className="encounter-eyebrow">此时 · 人间故事</span>
+        {encountersFor(time).length ? encountersFor(time).map((encounter) => (
+          <button key={encounter.id} type="button" className={activeEncounter === encounter.id ? 'active' : ''}
+            onClick={() => openEncounter(encounter.id)} aria-expanded={activeEncounter === encounter.id}>
+            <span className="encounter-dot" aria-hidden="true">◈</span>
+            <span><strong>{encounter.title}</strong><small>{encounter.kicker}</small></span>
+          </button>
+        )) : <p className="encounter-rest">夕照宜静观 · 移卷看山水</p>}
+      </aside>
+      {activeEncounter && findEncounter(activeEncounter).time === time && (
+        <section className="encounter-sheet" role="region" aria-label={`${findEncounter(activeEncounter).title}互动`}>
+          <button className="encounter-close" onClick={closeEncounter} aria-label="关闭互动">×</button>
+          <span className="encounter-eyebrow">{findEncounter(activeEncounter).kicker} · 交互预览</span>
+          <h3>{findEncounter(activeEncounter).title}</h3>
+          <p>{findEncounter(activeEncounter).intro}</p>
+          {activeEncounter === 'night-stage' ? (
+            <div className="night-actions">
+              <div className="night-view" role="group" aria-label="选择夜景视角">
+                <button className={nightView === 'shore' ? 'active' : ''} aria-pressed={nightView === 'shore'}
+                  onClick={() => setNightView('shore')}>岸边观看</button>
+                <button className={nightView === 'boat' ? 'active' : ''} aria-pressed={nightView === 'boat'}
+                  onClick={() => setNightView('boat')}>船上观看（镜头预览）</button>
+              </div>
+              <button onClick={() => setNightLights((value) => !value)} aria-pressed={nightLights}>
+                {nightLights ? '◉ 关闭灯光叠加' : '◎ 分段点亮江岸'}
+              </button>
+              <button onClick={() => {
+                setNightRhythm((value) => !value);
+                setNightLights(true);
+              }} aria-pressed={nightRhythm}>
+                {nightRhythm ? '◉ 关闭静音节奏预览' : '♫ 预览倒影节拍（静音）'}
+              </button>
+              <button onClick={() => trigger('song')}>♪ 对山歌 · 人物姿态预览</button>
+              <button onClick={() => setNightDrones((value) => !value)} aria-pressed={nightDrones}>
+                {nightDrones ? '◉ 关闭无人机光点' : '✧ 查看无人机概念光点'}
+              </button>
+              <p className="night-note" role="status">当前：{nightView === 'shore' ? '岸边' : '模拟船上'}视角 · {nightLights ? '灯光开启' : '灯光关闭'} · {nightDrones ? '无人机效果开启' : '无人机效果关闭'}。尚无音乐与正式船体素材。</p>
+            </div>
+          ) : (
+            <div className="dialogue-options">
+              {findEncounter(activeEncounter).choices.map((choice) => (
+                <button key={choice.id} type="button" onClick={() => chooseDialogue(choice)}>{choice.label}</button>
+              ))}
+            </div>
+          )}
+          {encounterReply && <p className="encounter-reply" role="status">{encounterReply}</p>}
+          <small className="encounter-disclaimer">{findEncounter(activeEncounter).detail}</small>
+        </section>
+      )}
       <section className="place-card" aria-live="polite">
         <div className="place-heading"><span>第{current.number}景</span><span>{current.eyebrow}</span></div>
         <h2>{current.name}</h2>
         <p>{current.description}</p>
         <div className="place-footer"><small>{current.hint}</small>
-          <button onClick={() => trigger(place === 'glassbridge' ? 'song' : 'gaze')}>
-            {place === 'glassbridge' ? '♪ 对山歌' : '◌ 驻足赏景'}
+          <button onClick={() => trigger(place === 'glassbridge' && time === 'night' ? 'song' : 'gaze')}>
+            {place === 'glassbridge' && time === 'night' ? '♪ 对山歌' : '◌ 驻足赏景'}
           </button>
         </div>
       </section>
@@ -169,8 +260,8 @@ export default function App() {
           <span className="help-chapter">入画 · 三法</span>
           <h2>游目指南</h2>
           <p>用鼠标或手指左右拖动画卷；滚轮或双指可缩放。按住左右箭头，或使用键盘 ← → / A D，让画中人沿岸行走。</p>
-          <p>切换「清昼」「夕照」「入夜」会直接替换对应的原幅背景，不是简单调色。点击四景导航，可快速找到图中的位置。</p>
-          <p className="help-note">当前版本使用原幅无损图片。人物行走与对山歌仍为关键姿态演示，暂未提供完整逐帧动画和授权的民歌音频。</p>
+          <p>切换「清晨」「正午」「夕照」「入夜」会选择对应高清原画，其中清晨和正午共用白昼原画。点击渔人、鸬鹚、鱼市或夜游的画中热点与右侧事件按钮，体验互动脚本。</p>
+          <p className="help-note">当前版本使用原幅无损图片。渔人/鸬鹚/鱼市属于互动骨架；船上镜头、分段灯光、无人机光点和水面静音节拍是概念演示。暂无完整逐帧动画、授权音乐或真实无人机演出记录。</p>
         </section>
       </div>}
     </main>

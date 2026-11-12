@@ -9,7 +9,7 @@
 - PixiJS 8 + TypeScript (strict) + Vite + React；React 只负责 DOM UI，Pixi 负责世界、相机、人物、纹理、ticker。
 - 固定世界画幅 **2172×724**（3:1）。绝不把画卷非等比拉伸，更不把 **2172px 原图缩成 1120px 或 680px 模糊预览**再当最终展示。
 - 场景文件映射：`scene-day.webp` 白昼、`scene-dusk.webp` 夕照、`scene-night.webp` 夜景。需要切换完整贴图而不是 `tint` 模拟。
-- 展示文件统一 WebP lossless，无尺寸缩放；人物仅裁剪全透明边框，保留所有有效像素。原稿路径见 docs/ASSETS.md。
+- 三幅场景长卷、首页 16:9 原画及五张用户角色图均使用 WebP lossless，无尺寸缩放；人物仅裁剪全透明边框，保留所有有效像素。新增 NPC 小型透明 WebP 可有损压缩，但必须维持原始纹理尺寸、透明边缘与明确的体积预算。原稿路径见 docs/ASSETS.md。
 - 所有资源使用 `import.meta.env.BASE_URL`；GitHub Pages 子路径 `/Lijiang_Pen_Transfer/` 下必须可加载。
 - 禁止在 React 的 render 或 State 更新中以 60FPS 驱动 Pixi 对象。
 - 遵守 `prefers-reduced-motion`、键盘/触控的交互需要和错误提示。

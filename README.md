@@ -1,53 +1,41 @@
-# 漓江·移笔游目 / Lijiang · Walk Into the Painting
+# 漓江 · 移笔游目 / Lijiang · Walk Into the Painting
 
-> 一幅可以进入的漓江青绿山水长卷。以山水漫游与壮族服饰人物为核心的交互叙事 Web 作品。
+> 青绿山水，移步入画。以漓江为卷，以人物为引，在一幅可以漫游的风景中走过四景。
 
-**技术栈：** PixiJS 8 + TypeScript + Vite + React（仅用于 UI）。部署目标为 GitHub Pages。
+**PixiJS 8 + TypeScript + Vite + React UI** · GitHub Pages · 高画质无损 WebP 素材
 
-- [交互 Demo](https://greenhandzdl.github.io/Lijiang_Pen_Transfer/)（GitHub Pages 配置完成后可访问）
-- [需求文档](docs/PRODUCT.md) · [架构设计](docs/ARCHITECTURE.md) · [迭代路线](docs/ROADMAP.md)
-- [AI Agent 开发守则](AGENTS.md) · [素材规范](docs/ASSETS.md) · [测试与发布](docs/QUALITY.md)
+**在线 Demo：** https://greenhandzdl.github.io/Lijiang_Pen_Transfer/
 
-## 本地启动
+## 演示的内容
 
-需要 Node.js 22 或更新版本：
+- **三时辰画卷**：清昼、夕照、入夜三张真实绘制的原幅背景，每张 **2172 × 724 像素**；直接切换图层，不采用单张 Tint。
+- **高画质**：背景和人物运行图都使用 `WebP lossless`，无分辨率缩放。人物只裁透明留白，原始像素完整保留。总计约 **10MB**，因此首次加载可能需要数秒。
+- **四景游历**：象鼻山、日月双塔、阳桥、玻璃桥；PixiJS 支持横向拖动、双指/滚轮缩放、步行操作、点击观景标记、点水泛波。
+- **五种人物姿态**：正面、侧面、背面、行走、对山歌。当前是关键姿态展示，不假称有完整逐帧行走动画。
+- **双入口**：「入画启程」偏人物随行；「山水漫游」偏自由定位。React DOM 保持 UI 交互和可访问性。
+
+这是一版**展示优先的技术垂直切片**。场景仍是扁平化长卷，桥栏遮挡、动画中间帧和正式文化声音需在未来素材分层后实现。画卷节点为艺术排布，不代表准确地理路线。
+
+## 开发命令
+
+需要 Node.js 22：
 
 ```bash
 npm install
 npm run dev
-# http://localhost:5173/Lijiang_Pen_Transfer/
 npm run typecheck
 npm run build
+npm run preview
 ```
 
-## Demo 范围
+访问 `http://localhost:5173/Lijiang_Pen_Transfer/`。静态资源 URL 必须经 `import.meta.env.BASE_URL` 生成。`main` 分支 push 后 GitHub Actions 自动部署 Pages，并使用 `curl` 验证生产 HTML、JS 和背景图片。
 
-- 首页参考上传的《界面背景图》与《界面》视觉语言，提供「入画启程 / 山水漫游」双入口。
-- PixiJS 画卷：横向拖拽、滚轮 / 双指缩放、位置导航、画卷跟随。
-- 角色演示：行走、停留、对山歌动作切换；不将单张关键姿态冒充完整逐帧行走。
-- 四处艺术化游览节点：象鼻山、日月双塔、阳桥、玻璃桥；内置昼 / 暮 / 夜色调和简化水纹。
-- React HUD：状态、景点介绍、键盘及触控提示，响应式布局。
-- 无账号、无后端，部署在 GitHub Pages。
+## 仓库指引
 
-**范围说明：** 初版是技术垂直切片，而非历史地理精确复原。现有单张画作被作为美术参考 / 预览底图，分层景深、脚底高度、独立遮挡和连续角色动画将继续补齐。
+- [AGENTS.md](AGENTS.md)：所有编码 Agent 先读
+- [产品需求](docs/PRODUCT.md) | [架构](docs/ARCHITECTURE.md) | [资源规范与出处](docs/ASSETS.md) | [路线图](docs/ROADMAP.md)
+- [发布/测试](docs/QUALITY.md) | [架构决策记录](docs/DECISIONS/0001-pixijs-stack.md) | [素材版权](ASSETS-LICENSE.md)
 
-## 目录约定
+## 授权
 
-```text
-.github/workflows/  CI & Pages
-docs/               产品、架构、设计决策、质量、素材
-public/art/         发布用经过压缩的图片（严禁上传无授权音频）
-src/app/            React 首页 / HUD
-src/engine/         PixiJS 场景、输入、镜头与角色
-src/content/        景点、故事与配置
-src/styles/         UI 样式
-AGENTS.md           所有 AI Agent 必读
-```
-
-## 文档优先级
-
-`AGENTS.md` → `docs/PRODUCT.md` → `docs/ARCHITECTURE.md` → `docs/ASSETS.md` → 具体模块代码。
-
-## 版权
-
-代码采用仓库现有的 [MIT License](LICENSE)。用户上传或原创美术、人物素材及后续音乐等**单独受素材授权约束**，详见 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。参考项目 `xianxie6/qingming-riverside` 仅供技术设计研究，不复制其受限源码与素材。
+程序与明确标示的文档沿用原仓库的 [MIT License](LICENSE)；美术与音乐分别遵守素材版权声明，不因程序 MIT 自动获得商业再授权。未使用参考项目 `xianxie6/qingming-riverside` 的受限源代码或艺术文件。

@@ -6,51 +6,54 @@ type StageProps = {
   mode: VisitMode;
   time: TimeOfDay;
   target: PlaceId;
-  walk: number;
-  paused: boolean;
-  singVersion: number;
-  zoomVersion: number;
+  walking: number;
+  actionNumber: number;
+  actionType: 'gaze' | 'song';
+  zoomNumber: number;
   zoomFactor: number;
+  onReady: () => void;
   onPlace: (id: PlaceId) => void;
   onPosition: (progress: number) => void;
   onError: (message: string) => void;
 };
 
 export default function ScrollStage(props: StageProps) {
-  const host = useRef<HTMLDivElement>(null);
-  const engine = useRef<ScrollEngine | null>(null);
-  const callbacks = useRef(props);
-  callbacks.current = props;
+  const container = useRef<HTMLDivElement | null>(null);
+  const engineRef = useRef<ScrollEngine | null>(null);
+  const latest = useRef(props);
+  latest.current = props;
 
   useEffect(() => {
-    if (!host.current) return;
-    const scrollEngine = new ScrollEngine(host.current, {
-      onPlace: (id) => callbacks.current.onPlace(id),
-      onPosition: (progress) => callbacks.current.onPosition(progress),
-      onError: (message) => callbacks.current.onError(message),
+    if (!container.current) return;
+    const engine = new ScrollEngine(container.current, {
+      onReady: () => latest.current.onReady(),
+      onPlace: (id) => latest.current.onPlace(id),
+      onPosition: (value) => latest.current.onPosition(value),
+      onError: (message) => latest.current.onError(message),
     });
-    engine.current = scrollEngine;
-    void scrollEngine.init().then(() => {
-      if (engine.current !== scrollEngine) return;
-      scrollEngine.setMode(callbacks.current.mode);
-      scrollEngine.setTimeOfDay(callbacks.current.time);
-      scrollEngine.focusPlace(callbacks.current.target);
+    engineRef.current = engine;
+    void engine.init().then(() => {
+      if (engineRef.current !== engine) return;
+      engine.setMode(latest.current.mode);
+      engine.setTimeOfDay(latest.current.time);
+      engine.focusPlace(latest.current.target, true);
     });
     return () => {
-      engine.current = null;
-      scrollEngine.destroy();
+      engineRef.current = null;
+      engine.destroy();
     };
   }, []);
 
-  useEffect(() => { engine.current?.setMode(props.mode); }, [props.mode]);
-  useEffect(() => { engine.current?.setTimeOfDay(props.time); }, [props.time]);
-  useEffect(() => { engine.current?.focusPlace(props.target); }, [props.target]);
-  useEffect(() => { engine.current?.setWalkDirection(props.walk); }, [props.walk]);
-  useEffect(() => { engine.current?.setPaused(props.paused); }, [props.paused]);
-  useEffect(() => { if (props.singVersion) engine.current?.sing(); }, [props.singVersion]);
+  useEffect(() => { engineRef.current?.setMode(props.mode); }, [props.mode]);
+  useEffect(() => { engineRef.current?.setTimeOfDay(props.time); }, [props.time]);
+  useEffect(() => { engineRef.current?.focusPlace(props.target); }, [props.target]);
+  useEffect(() => { engineRef.current?.setWalkDirection(props.walking); }, [props.walking]);
   useEffect(() => {
-    if (props.zoomVersion) engine.current?.zoomBy(props.zoomFactor);
-  }, [props.zoomVersion, props.zoomFactor]);
+    if (props.actionNumber > 0) engineRef.current?.performAction(props.actionType);
+  }, [props.actionNumber, props.actionType]);
+  useEffect(() => {
+    if (props.zoomNumber > 0) engineRef.current?.zoomBy(props.zoomFactor);
+  }, [props.zoomNumber, props.zoomFactor]);
 
-  return <div ref={host} className="scroll-stage" />;
+  return <div ref={container} className="scroll-stage" />;
 }

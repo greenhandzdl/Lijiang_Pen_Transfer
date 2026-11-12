@@ -1,47 +1,39 @@
-# 技术架构 v0.1
+# 交互画卷技术架构 v0.2
 
-## 栈
-- Vite 7 + React 19 + TypeScript 5（strict）
-- PixiJS 8 `Application` / `Container` / `Sprite` / `Graphics` / `Assets`
-- CSS：响应式 UI；React 不参与帧循环
-- 原生浏览器持久化可选：localStorage（以后做收藏）
+## 固定技术栈
+
+PixiJS 8 + TypeScript 严格模式 + Vite + React 19 + CSS。GitHub Pages 静态发布；无需服务端。**React 仅负责界面，Pixi ticker 更新世界坐标、素材透明度和人物帧，不通过 React 每帧触发渲染。**
 
 ## 数据流
+
 ```text
-React App ── props/callbacks ──> ScrollStage (mount/unmount)
-  │                                 │
-  │                          new ScrollEngine
-  │                                 │
-  ├─ mode / time / place            ├─ Pixi Application
-  ├─ buttons / dialogs              ├─ world + foreground / hero
-  └─ status display                 ├─ camera (world transforms)
-                                    ├─ ticker (dt)
-                                    └─ pointer / wheel / keyboard
+App.tsx [主页/导航/时辰/交互/字幕]
+    ↓ props / callbacks
+ScrollStage.tsx [创建/销毁，转交事件，Engine 生命周期]
+    ↓
+ScrollEngine.ts [Pixi Application + 世界坐标 + 相机 + 角色 + 水纹 + 触屏事件]
+    ├── 3 × Sprite 原生画卷 2172×724 (alpha crossfade)
+    ├── 4 × Marker (clickable Graphics)
+    ├── 1 × Sprite 角色 (5 pose textures; 位置在折线路径)
+    └── Ripple Graphics (独立水面波纹特效)
 ```
 
-## 模块边界
-- `src/app/App.tsx`：页面状态与 UI，负责生命周期，Pixi 引擎只挂载一次。
-- `src/app/ScrollStage.tsx`：容器，创建/销毁 ScrollEngine，桥接属性更新。
-- `src/engine/ScrollEngine.ts`： Pixi 应用初始化、画卷/角色、相机、事件、缩放、输入、清理。
-- `src/content/places.ts`：场景节点独立数据、文案和类型。
-- `src/styles/app.css`：页面视觉和布局。
+## 关键原则
 
-## 坐标与分层
-演示场景为原图高宽比展开为横向舞台；图片左右交叠延伸，以构成比原图更长的世界。归一化为世界坐标，Camera 通过 `world.scale` 和 `world.position` 变换。人物脚底落在岸线附近的稳定世界 Y 坐标。
+- Vite `base: '/Lijiang_Pen_Transfer/'`；运行资源通过 `import.meta.env.BASE_URL` 拼接。
+- 世界固定 `WORLD_WIDTH=2172`, `WORLD_HEIGHT=724`，保持原图比例，不随屏幕拉伸。视口使用相机 scale + position 裁切。
+- 主页使用 `<img>` + CSS object-fit:cover 作为宣传封面；进入场景后 Pixi 保持原图宽高比。
+- 背景切换**直接替换独立昼/夕/夜绘制**，通过 alpha 交叠过渡，不用 Tint 冒充独立画卷。
+- Hero sprite `anchor=(0.5,1)` 脚底锚点；人物仅是关键姿态。后续使用正式 Atlas 的逐帧动画取代。
+- 角色站在人工测定的临时步道曲线上，当前不实现严谨遮挡和地形碰撞。
+- 静态资源为全分辨率 lossless WebP；显示加载状态，不在仓库提交任何低质量预览版。
+- Pixi 实例创建一次，React StrictMode 下允许组件销毁/重建；input 监听按生命周期清理。
+- `prefers-reduced-motion` 关掉人物弹跳和淡入的平滑运动。
+- 不在运行时调用后台 API，不加载未授权外部文字、字体、录音。
 
-真实分层方案：背景 → 江水 → 远岸 → 人物 → 桥前景遮挡 → 近岸植被 → 天气/调色 → DOM HUD。
+## 优先拆分模块
 
-## 运行策略
-- 首次初始化异步 `await app.init`；mount 卸载时清理监听器、ticker、app.destroy。
-- 输入：方向键、按钮和 PointerEvents；不把 Pixi Canvas 的 pointer 阻挡用于 HUD。
-- `deltaMS` 以毫秒计；运动速度乘 `dt = min(deltaMS, 50)/1000`。
-- 相机滚动受边界限制；缩放围绕视口中心，手势使用 pinch 距离变化。
-- 资源加载失败后保留用户可见的错误说明，而非静默空白。
-- 触屏滚动由触摸画布控制；React 控件不向画布冒泡。
-- 页面隐藏或用户选择静态模式时降低或停止动画。
-
-## 提升路线
-1. 将景点定义升级为 `WorldRegion`，分区加载独立透明图。
-2. 替换单张姿势为 TextureAtlas + AnimatedSprite；接入脚底与遮挡掩模。
-3. 将事件演出拆为显式状态机；音频与字幕共用事件时钟。
-4. 使用可视区域裁剪、缓存AsTexture / 渐进贴图、多质量档位。
+1. 分场景绘画原稿（山体、远景、岸线、桥栏、倒影、前景）并增加世界高度与遮挡图。
+2. 独立步行动画 Atlas 和专用事件状态机，避免关键姿态单张模拟连续脚步。
+3. 把时辰三套的角色/建筑事件内容配置化，实现对山歌事件字幕、授权音频与退出/跳过。
+4. 首屏改为 day 快速呈现，夕照/夜景和不使用的 pose 后台加载，提高弱网体验；仍保持原始分辨率。

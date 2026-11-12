@@ -1,7 +1,9 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { ENCOUNTERS, type EncounterId, type NightView } from '../content/encounters';
+import { NightEffects, type NightControls } from './NightEffects';
 import {
-  PLACES, WORLD_HEIGHT, WORLD_WIDTH,
-  type PlaceId, type TimeOfDay, type VisitMode,
+  PLACES, WORLD_HEIGHT, WORLD_WIDTH, artworkForTime,
+  type ArtworkVariant, type PlaceId, type TimeOfDay, type VisitMode,
 } from '../content/places';
 
 type EngineCallbacks = {
@@ -9,6 +11,7 @@ type EngineCallbacks = {
   onPlace: (place: PlaceId) => void;
   onPosition: (progress: number) => void;
   onError: (message: string) => void;
+  onEncounter: (id: EncounterId) => void;
 };
 
 type Pose = 'front' | 'side' | 'back' | 'walk' | 'song';
@@ -51,9 +54,12 @@ export class ScrollEngine {
   private world = new Container();
   private readonly host: HTMLDivElement;
   private readonly callbacks: EngineCallbacks;
-  private readonly backgrounds = new Map<TimeOfDay, Sprite>();
+  private readonly backgrounds = new Map<ArtworkVariant, Sprite>();
   private readonly actors = new Map<Pose, Texture>();
   private readonly markers = new Container();
+  private readonly encounterMarkers = new Map<EncounterId, Container>();
+  private readonly encounterLayer = new Container();
+  private readonly nightEffects = new NightEffects();
   private readonly ripplesLayer = new Graphics();
   private readonly activePointers = new Map<number, Point>();
   private ripples: Ripple[] = [];
@@ -63,7 +69,8 @@ export class ScrollEngine {
   private reducedMotion = false;
   private visible = true;
   private mode: VisitMode = 'guided';
-  private time: TimeOfDay = 'day';
+  private time: TimeOfDay = 'morning';
+  private nightControls: NightControls = { view: 'shore', lights: false, rhythm: false, drones: false };
   private heroX = 260;
   private facing = 1;
   private walkDirection = 0;
@@ -122,7 +129,7 @@ export class ScrollEngine {
         const sprite = new Sprite(backgrounds[id]);
         sprite.width = WORLD_WIDTH;
         sprite.height = WORLD_HEIGHT;
-        sprite.alpha = id === this.time ? 1 : 0;
+        sprite.alpha = id === artworkForTime(this.time) ? 1 : 0;
         this.backgrounds.set(id, sprite);
         this.world.addChild(sprite);
       });
@@ -133,7 +140,11 @@ export class ScrollEngine {
       this.actors.set('song', song);
 
       this.addMarkers();
+      this.addEncounterMarkers();
+      this.world.addChild(this.nightEffects.graphics);
       this.world.addChild(this.markers);
+      this.world.addChild(this.encounterLayer);
+      this.updateEncounterVisibility();
 
       this.hero = new Sprite(front);
       this.hero.anchor.set(0.5, 1);
@@ -170,6 +181,66 @@ export class ScrollEngine {
       });
       this.markers.addChild(node);
     }
+  }
+
+
+  /**
+   * Decorative but genuinely clickable world hotspots. Can later be attached
+   * to transparent NPC sprites without changing the dialogue layer.
+   */
+  private addEncounterMarkers(): void {
+    for (const encounter of ENCOUNTERS) {
+      const marker = new Container();
+      const ring = new Graphics().circle(0, 0, 16)
+        .stroke({ color: 0xf8e7c1, width: 2.2, alpha: 0.9 });
+      const center = new Graphics().circle(0, 0, 7)
+        .fill({ color: encounter.time === 'night' ? 0xf5b36b : 0x9b713f, alpha: 0.98 })
+        .circle(0, 0, 3).fill({ color: 0xfff1cc });
+      marker.position.set(encounter.worldX, encounter.worldY);
+      marker.addChild(ring, center);
+      marker.eventMode = 'static';
+      marker.cursor = 'pointer';
+      marker.hitArea = { contains: (x: number, y: number) => x * x + y * y <= 27 * 27 };
+      marker.on('pointertap', () => {
+        if (encounter.time !== this.time) return;
+        this.walkDirection = 0;
+        this.destination = null;
+        this.callbacks.onPlace(encounter.place);
+        this.callbacks.onEncounter(encounter.id);
+      });
+      this.encounterMarkers.set(encounter.id, marker);
+      this.encounterLayer.addChild(marker);
+    }
+  }
+
+  private updateEncounterVisibility(): void {
+    for (const encounter of ENCOUNTERS) {
+      const marker = this.encounterMarkers.get(encounter.id);
+      if (marker) marker.visible = encounter.time === this.time;
+    }
+  }
+
+  previewEncounter(id: EncounterId): void {
+    const encounter = ENCOUNTERS.find((item) => item.id === id);
+    if (encounter && encounter.time === this.time) {
+      this.ripples.push({ x: encounter.worldX, y: 516, age: 0 });
+      this.ripples.push({ x: encounter.worldX + 16, y: 523, age: 0.18 });
+    }
+  }
+
+  setNightControls(next: NightControls): void {
+    const enteringBoat = this.nightControls.view !== next.view && next.view === 'boat';
+    this.nightControls = next;
+    if (this.time === 'night' && enteringBoat) {
+      // Camera-only prototype, boat interior art is not supplied yet.
+      this.cameraTarget = 1525 - this.host.clientWidth / (2 * this.zoom);
+    }
+    this.applyCamera();
+  }
+
+  /** Future Web Audio analyser/beat-envelope integration point. */
+  setAudioEnergy(energy: number): void {
+    this.nightEffects.setAudioEnergy(energy);
   }
 
   private installEvents(): void {
@@ -262,7 +333,9 @@ export class ScrollEngine {
     const maxLeft = WORLD_WIDTH - visibleWidth;
     this.cameraLeft = maxLeft < 0 ? maxLeft / 2 : Math.min(maxLeft, Math.max(0, this.cameraLeft));
     this.world.scale.set(this.zoom);
-    this.world.position.set(-this.cameraLeft * this.zoom, (this.host.clientHeight - WORLD_HEIGHT * this.zoom) / 2);
+    const boatPreview = this.time === 'night' && this.nightControls.view === 'boat';
+    const drift = boatPreview && !this.reducedMotion ? Math.sin(this.elapsed * 1.25) * 2.1 : 0;
+    this.world.position.set(-this.cameraLeft * this.zoom, (this.host.clientHeight - WORLD_HEIGHT * this.zoom) / 2 + (boatPreview ? 19 : 0) + drift);
     const fraction = Math.max(0, Math.min(1, (this.cameraLeft + visibleWidth / 2) / WORLD_WIDTH));
     if (Math.abs(fraction - this.lastProgress) > 0.003) {
       this.lastProgress = fraction;
@@ -282,7 +355,11 @@ export class ScrollEngine {
     if (direction) { this.destination = null; this.action = null; }
   }
   setMode(mode: VisitMode): void { this.mode = mode; }
-  setTimeOfDay(time: TimeOfDay): void { this.time = time; }
+  setTimeOfDay(time: TimeOfDay): void {
+    this.time = time;
+    this.updateEncounterVisibility();
+    this.applyCamera();
+  }
 
   focusPlace(id: PlaceId, instant = false): void {
     const place = PLACES.find((p) => p.id === id) ?? PLACES[0];
@@ -320,8 +397,10 @@ export class ScrollEngine {
     if (!this.hero || !this.visible || this.disposed) return;
     const dt = Math.min(MAX_FRAME_TIME, ticker.deltaMS / 1000);
     this.elapsed += dt;
+    this.nightEffects.draw(dt, this.time === 'night', this.nightControls, this.reducedMotion);
+    if (this.time === 'night' && this.nightControls.view === 'boat') this.applyCamera();
     for (const [id, sprite] of this.backgrounds) {
-      const desired = id === this.time ? 1 : 0;
+      const desired = id === artworkForTime(this.time) ? 1 : 0;
       const blend = this.reducedMotion ? 1 : Math.min(1, dt * 3.2);
       sprite.alpha += (desired - sprite.alpha) * blend;
       if (Math.abs(desired - sprite.alpha) < 0.002) sprite.alpha = desired;
@@ -389,6 +468,7 @@ export class ScrollEngine {
     window.removeEventListener('resize', this.onResize);
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.app.ticker.remove(this.tick);
+    this.nightEffects.clear();
     this.app.destroy(true, { children: true, texture: false, textureSource: false });
     this.ready = false;
   }

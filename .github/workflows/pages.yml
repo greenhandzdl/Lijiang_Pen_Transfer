@@ -31,6 +31,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Verify artwork native sizes and lossless encoding
         run: npm run verify:assets
+      - name: Test interaction time slots and story manifest
+        run: npm test
       - name: Typecheck
         run: npm run typecheck
       - name: Build

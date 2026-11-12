@@ -43,3 +43,5 @@ ScrollEngine.ts [Pixi Application + 世界坐标 + 相机 + 角色 + 水纹 + �
 体验时段：`morning/noon/dusk/night`，原始背景三幅：`day/day/dusk/night`。分别使用 `artworkForTime()` 数据函数，不重复创建贴图；剧情列表位于 `src/content/encounters.ts`，提供静态位置、选择与行为。Pixi Graphics 热区触发 `onEncounter(id)` → React 对话，不应把 JSX 拼入 Pixi ticker。
 
 夜间镜头/灯光/无人机/倒影节拍由独立数值参数控制；当前没有合法可用音频，`setAudioEnergy` 是预留 API，节拍模拟必须被明确称作「静音节奏预览」。制作正式版本需要独立 night-effects 模块和 Web Audio AnalyserNode。详见 `docs/INTERACTION_PLAN.md`。
+
+**已完成演示接口**：`src/engine/NightEffects.ts` 是独立的轻量矢量光效图层，支持 `{view, lights, rhythm, drones}` 与未来真实音频能量输入 `setAudioEnergy(0..1)`；`src/app/ScrollStage.tsx` 桥接状态，`App.tsx` 提供可访问选项。夜间纹理始终用原幅 `scene-night.webp`，特效不会修改图片文件。

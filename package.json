@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run verify:assets && tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "verify:assets": "node scripts/verify-assets.mjs"
+    "verify:assets": "node scripts/verify-assets.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {
     "pixi.js": "8.23.0",

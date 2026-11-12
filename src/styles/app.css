@@ -394,3 +394,28 @@
 @media(prefers-reduced-motion:reduce){
   .elephant-progress i{animation:none;}
 }
+
+
+/* Fourth-stop finish: a held 3D mountain and an optional return to the scroll. */
+.scene-finale-link {
+  display:block;width:100%;margin-top:11px;min-height:31px;padding:6px 9px;
+  border:1px solid rgba(115,93,61,.4);background:rgba(246,231,195,.34);
+  color:#66513a;text-align:center;font-size:11px;letter-spacing:.13em;
+}
+.scene-finale-link:hover {background:rgba(236,214,168,.9);}
+.elephant-variant-finale .elephant-progress i { animation-duration:9s; }
+.elephant-variant-finale .elephant-caption {top:35%;}
+.elephant-ending-actions {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:15px;}
+.elephant-ending-actions button {padding:11px 19px;min-height:42px;
+  border:1px solid currentColor;color:inherit;
+  background:rgba(244,233,207,.6);font-size:12px;letter-spacing:.15em;
+  backdrop-filter:blur(5px);}
+.elephant-ending-actions button:last-child {background:#5b755e;color:#fff4dc;border-color:#5b755e;}
+.elephant-time-night .elephant-ending-actions button {background:rgba(27,51,62,.65);}
+.elephant-time-night .elephant-ending-actions button:last-child {background:#8a6949;color:#fff6db;}
+@media(max-width:700px) {
+  .scene-finale-link {min-height:27px;margin-top:5px;padding:4px;font-size:9px;}
+  .elephant-variant-finale .elephant-caption {top:30%;}
+  .elephant-ending-actions {gap:7px;margin-bottom:9px;}
+  .elephant-ending-actions button {padding:8px 9px;min-height:34px;font-size:10px;}
+}

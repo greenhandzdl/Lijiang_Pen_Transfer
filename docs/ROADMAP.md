@@ -2,9 +2,10 @@
 
 ## M0（当前提交）— 工程与规范
 - [x] 仓库文档、.gitignore、AGENTS.md、素材/架构/测试规范
-- [ ] PixiJS 8 / TypeScript / Vite / React 完整代码
-- [ ] 样图浏览与交互垂直切片
-- [ ] GitHub Pages Actions 发布并人工确认线上可访问
+- [x] PixiJS 8 / TypeScript / Vite / React 初版工程代码
+- [x] 样图浏览与交互垂直切片（低清素材预览）
+- [x] GitHub Actions TypeScript 检查与 Vite 构建通过
+- [ ] 需要仓库管理员在 Settings → Pages 中设置 Source: GitHub Actions，再确认发布
 
 ## M1 — 第一景精修（2–3 周）
 - [ ] 首页视觉对齐原 UI 设计，不直接把带字图片当 UI

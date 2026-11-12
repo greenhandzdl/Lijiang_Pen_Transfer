@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { TimeOfDay } from '../content/places';
 
 /**
  * A self-contained, stylised 3D prologue. The painted 2172×724 panoramas are
@@ -155,11 +156,11 @@ function addDistance(scene: THREE.Scene) {
   }
 }
 
-function addRiver(scene: THREE.Scene) {
+function addRiver(scene: THREE.Scene, time: TimeOfDay) {
   const surface = new THREE.PlaneGeometry(180, 180, 1, 1);
   surface.rotateX(-Math.PI / 2);
   const water = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uTone: { value: time === 'night' ? 2 : time === 'dusk' ? 1 : 0 } },
     vertexShader: String.raw`
       varying vec3 vPoint;
       void main() {
@@ -169,6 +170,7 @@ function addRiver(scene: THREE.Scene) {
     `,
     fragmentShader: String.raw`
       uniform float uTime;
+      uniform float uTone;
       varying vec3 vPoint;
       void main() {
         float ripple = sin(vPoint.x * 1.2 + vPoint.z * 0.45 + uTime * 0.8)
@@ -178,6 +180,8 @@ function addRiver(scene: THREE.Scene) {
         vec3 darkWater = vec3(0.34, 0.52, 0.47);
         vec3 brightWater = vec3(0.63, 0.74, 0.65);
         vec3 color = mix(darkWater, brightWater, light * 0.65);
+        color = mix(color, vec3(0.58, 0.46, 0.34), step(0.5, uTone) * (1.0 - step(1.5, uTone)) * 0.27);
+        color = mix(color, vec3(0.10, 0.22, 0.29) + light * 0.10, step(1.5, uTone) * 0.78);
         gl_FragColor = vec4(color, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -295,7 +299,7 @@ export class ElephantIntroScene {
   private disposed = false;
   private finished = false;
 
-  constructor(container: HTMLElement, artRoot: string, callbacks: Callbacks) {
+  constructor(container: HTMLElement, artRoot: string, time: TimeOfDay, callbacks: Callbacks) {
     this.container = container;
     this.callbacks = callbacks;
     const small = window.innerWidth < 720;
@@ -309,15 +313,36 @@ export class ElephantIntroScene {
     this.renderer.domElement.setAttribute('aria-hidden', 'true');
     this.renderer.domElement.className = 'elephant-canvas';
     container.appendChild(this.renderer.domElement);
-    this.scene.background = new THREE.Color('#dfdec9');
-    this.scene.fog = new THREE.Fog('#c6d1c6', 25, 78);
-    this.scene.add(new THREE.HemisphereLight('#fff8e4', '#738d82', 2.0));
-    const light = new THREE.DirectionalLight('#fff0cb', 2.4);
+    const night = time === 'night';
+    const dusk = time === 'dusk';
+    this.scene.background = new THREE.Color(night ? '#203746' : dusk ? '#dcb99a' : '#dfdec9');
+    this.scene.fog = new THREE.Fog(night ? '#263d50' : dusk ? '#c5b5a5' : '#c6d1c6', 25, 78);
+    this.scene.add(new THREE.HemisphereLight(night ? '#8da6ca' : '#fff8e4', '#738d82', night ? 0.85 : 2.0));
+    const light = new THREE.DirectionalLight(night ? '#b6c8e5' : dusk ? '#f8c88d' : '#fff0cb', night ? 0.75 : dusk ? 2.0 : 2.4);
     light.position.set(-12, 18, 16);
     this.scene.add(light);
     addDistance(this.scene);
     addMountain(this.scene);
-    this.water = addRiver(this.scene);
+    this.water = addRiver(this.scene, time);
+    if (night) {
+      addMesh(this.scene, new THREE.SphereGeometry(1.55, 20, 12),
+        new THREE.MeshBasicMaterial({ color: '#f7e8bf', fog: false }), -18, 15, -42);
+      const stars = new Float32Array(105 * 3);
+      const rng = randomSequence(889);
+      for (let i = 0; i < stars.length; i += 3) {
+        stars[i] = (rng() - 0.5) * 115;
+        stars[i + 1] = 10 + rng() * 29;
+        stars[i + 2] = -35 - rng() * 35;
+      }
+      const starGeo = new THREE.BufferGeometry();
+      starGeo.setAttribute('position', new THREE.BufferAttribute(stars, 3));
+      this.scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+        color: '#f8e4bc', size: 0.15, transparent: true, opacity: 0.7, depthWrite: false,
+      })));
+      const lantern = addMesh(this.scene, new THREE.SphereGeometry(0.18, 10, 8),
+        new THREE.MeshBasicMaterial({ color: '#ffd18b' }), 5.5, 2.0, 9.15);
+      lantern.add(new THREE.PointLight('#e9a45b', 3, 8, 2));
+    }
     addDock(this.scene);
     this.boat = addBoat(this.scene);
     this.figure = addFigure(this.scene, artRoot);
@@ -418,7 +443,10 @@ export class ElephantIntroScene {
     cancelAnimationFrame(this.frame);
     this.resizeObserver.disconnect();
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.InstancedMesh) {
+      if (object instanceof THREE.Points) {
+        object.geometry.dispose();
+        object.material.dispose();
+      } else if (object instanceof THREE.Mesh || object instanceof THREE.InstancedMesh) {
         object.geometry.dispose();
         const mats = Array.isArray(object.material) ? object.material : [object.material];
         mats.forEach((material) => material.dispose());

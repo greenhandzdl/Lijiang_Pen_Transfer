@@ -93,7 +93,7 @@ jobs:
           curl --fail-with-body --location --retry 5 --retry-delay 3 --retry-all-errors \
             --silent --show-error "${PAGE_URL%/}/art/home-background.webp" -o /tmp/home-background.webp
           HOME_SIZE="$(stat -c %s /tmp/home-background.webp)"
-          if [[ "${HOME_SIZE}" -lt 500000 || "${HOME_SIZE}" -gt 750000 ]]; then
+          if [[ "${HOME_SIZE}" -lt 1500000 || "${HOME_SIZE}" -gt 2500000 ]]; then
             echo "::error::Homepage panorama missing / wrong size: ${HOME_SIZE} bytes"
             exit 1
           fi

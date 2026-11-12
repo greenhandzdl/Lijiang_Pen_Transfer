@@ -86,7 +86,7 @@ for (const [filename, expectedWidth, expectedHeight, minBytes] of manifest) {
 try {
   const bytes = readFileSync(new URL('../public/art/home-background.webp', import.meta.url));
   const { width, height, lossless } = getDimensions(bytes);
-  const good = width === 1672 && height === 941 && bytes.length >= 500_000 && bytes.length <= 750_000 && !lossless;
+  const good = width === 1672 && height === 941 && bytes.length >= 1_500_000 && bytes.length <= 2_500_000 && lossless;
   if (!good) ok = false;
   console.log(`${good ? 'OK' : 'FAIL'} home-background.webp: ${width}x${height}, ${bytes.length.toLocaleString()} bytes, dedicated 16:9 hero`);
 } catch (error) {

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ScrollEngine } from '../engine/ScrollEngine';
+import type { NightMusic } from '../engine/NightMusic';
 import type { PlaceId, TimeOfDay, VisitMode } from '../content/places';
 import type { EncounterId, NightView } from '../content/encounters';
 
@@ -12,6 +13,8 @@ type StageProps = {
   nightLights: boolean;
   nightRhythm: boolean;
   nightDrones: boolean;
+  musicPlaying: boolean;
+  musicController: NightMusic | null;
   previewNumber: number;
   previewId: EncounterId;
   actionNumber: number;
@@ -45,7 +48,8 @@ export default function ScrollStage(props: StageProps) {
       if (engineRef.current !== engine) return;
       engine.setMode(latest.current.mode);
       engine.setTimeOfDay(latest.current.time);
-      engine.setNightControls({ view: latest.current.nightView, lights: latest.current.nightLights, rhythm: latest.current.nightRhythm, drones: latest.current.nightDrones });
+      engine.setNightControls({ view: latest.current.nightView, lights: latest.current.nightLights, rhythm: latest.current.nightRhythm, music: latest.current.musicPlaying, drones: latest.current.nightDrones });
+      engine.setMusicController(latest.current.musicController);
       engine.focusPlace(latest.current.target, true);
     });
     return () => {
@@ -57,8 +61,9 @@ export default function ScrollStage(props: StageProps) {
   useEffect(() => { engineRef.current?.setMode(props.mode); }, [props.mode]);
   useEffect(() => { engineRef.current?.setTimeOfDay(props.time); }, [props.time]);
   useEffect(() => {
-    engineRef.current?.setNightControls({ view: props.nightView, lights: props.nightLights, rhythm: props.nightRhythm, drones: props.nightDrones });
-  }, [props.nightView, props.nightLights, props.nightRhythm, props.nightDrones]);
+    engineRef.current?.setNightControls({ view: props.nightView, lights: props.nightLights, rhythm: props.nightRhythm, music: props.musicPlaying, drones: props.nightDrones });
+  }, [props.nightView, props.nightLights, props.nightRhythm, props.nightDrones, props.musicPlaying]);
+  useEffect(() => { engineRef.current?.setMusicController(props.musicController); }, [props.musicController]);
   useEffect(() => {
     if (props.previewNumber) engineRef.current?.previewEncounter(props.previewId);
   }, [props.previewNumber, props.previewId]);

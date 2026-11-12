@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import type { IntroBeat } from '../engine/ElephantIntroScene';
+import type { IntroBeat, IntroSequence } from '../engine/ElephantIntroScene';
 import { artworkForTime, type TimeOfDay } from '../content/places';
 
 type Props = {
   time: TimeOfDay;
+  variant?: IntroSequence;
   onComplete: () => void;
+  onBack?: () => void;
 };
 
 const CHAPTERS: Record<IntroBeat, { number: string; title: string; subtitle: string }> = {
@@ -14,7 +16,7 @@ const CHAPTERS: Record<IntroBeat, { number: string; title: string; subtitle: str
   poem: { number: '序 · 终', title: '人已入画', subtitle: '山水待你，以步为笔' },
 };
 
-export default function ElephantIntro({ onComplete, time }: Props) {
+export default function ElephantIntro({ onComplete, time, variant = 'entrance', onBack }: Props) {
   const mount = useRef<HTMLDivElement | null>(null);
   const completeRef = useRef(onComplete);
   const completed = useRef(false);
@@ -32,7 +34,7 @@ export default function ElephantIntro({ onComplete, time }: Props) {
     let disposed = false;
     let instance: { dispose: () => void } | null = null;
     // Reduce-motion users should not be subjected to a forced camera tour.
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (variant === 'entrance' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       completeRef.current();
       return;
     }
@@ -46,7 +48,7 @@ export default function ElephantIntro({ onComplete, time }: Props) {
       if (disposed || !mount.current) return;
       try {
         instance = new ElephantIntroScene(
-          mount.current, import.meta.env.BASE_URL + 'art/', time,
+          mount.current, import.meta.env.BASE_URL + 'art/', time, variant,
           { onBeat: (next) => { if (!disposed) setBeat(next); },
             onComplete: () => { if (!disposed) completeRef.current(); } },
         );
@@ -75,19 +77,19 @@ export default function ElephantIntro({ onComplete, time }: Props) {
 
   const chapter = CHAPTERS[beat];
   return (
-    <main className={'elephant-intro elephant-' + beat + ' elephant-time-' + time} aria-label="象鼻山入画三维序章">
+    <main className={'elephant-intro elephant-' + beat + ' elephant-time-' + time + ' elephant-variant-' + variant} aria-label={variant === 'finale' ? '象山水月卷尾题诗' : '象鼻山入画三维序章'}>
       <div className="elephant-render" ref={mount} aria-hidden="true" />
       <div className="elephant-papergrain" aria-hidden="true" />
       <header className="elephant-topline">
         <span className="elephant-wordmark"><b>漓</b> 漓江 · 移笔游目</span>
         <button type="button" className="elephant-skip" onClick={finish}>
-          跳过序章 <span aria-hidden="true">↗</span>
+          {variant === 'finale' ? '回到卷首' : '跳过序章'} <span aria-hidden="true">↗</span>
         </button>
       </header>
       <section className="elephant-caption" aria-live="polite">
-        <span className="elephant-caption-index">{chapter.number} · ELEPHANT TRUNK HILL</span>
-        <h1>{chapter.title}</h1>
-        <p>{chapter.subtitle}</p>
+        <span className="elephant-caption-index">{variant === 'finale' ? '终章 · XIANGSHAN SHUIYUE' : chapter.number + ' · ELEPHANT TRUNK HILL'}</span>
+        <h1>{variant === 'finale' ? (beat === 'poem' ? '象山水月' : '回望象山') : chapter.title}</h1>
+        <p>{variant === 'finale' ? '一卷行尽，青山仍在。' : chapter.subtitle}</p>
         {beat === 'poem' && (
           <blockquote className="elephant-poem">
             <span>水底有明月，水上明月浮。</span>
@@ -97,6 +99,10 @@ export default function ElephantIntro({ onComplete, time }: Props) {
         )}
       </section>
       <footer className="elephant-footer">
+        {variant === 'finale' && <div className="elephant-ending-actions">
+          <button type="button" onClick={onBack}>返回画卷</button>
+          <button type="button" onClick={finish}>完成游历 · 回到卷首</button>
+        </div>}
         <div className="elephant-progress-label">
           <span>观山</span><span>穿洞</span><span>靠岸</span><span>入画</span>
         </div>

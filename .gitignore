@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.pnpm-store/
+# output
+dist/
+coverage/
+.playwright/
+playwright-report/
+test-results/
+# env / secrets
+.env
+.env.*
+!.env.example
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+# logs and caches
+*.log
+*.tsbuildinfo
+.vite/
+.cache/
+# source art backups should not be deployed
+art-source/
+output/

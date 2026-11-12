@@ -1,5 +1,6 @@
 export type PlaceId = 'elephant' | 'towers' | 'yangbridge' | 'glassbridge';
-export type TimeOfDay = 'day' | 'dusk' | 'night';
+export type TimeOfDay = 'morning' | 'noon' | 'dusk' | 'night';
+export type ArtworkVariant = 'day' | 'dusk' | 'night';
 export type VisitMode = 'guided' | 'free';
 
 export type Place = {
@@ -49,8 +50,18 @@ export function getPlace(id: PlaceId): Place {
   return PLACES.find((p) => p.id === id) ?? PLACES[0];
 }
 
+/**
+ * Four experience periods use THREE completed original paintings.
+ * Morning/noon deliberately share the original daylight work:
+ * never tint, downscale, or claim a nonexistent independent noon painting.
+ */
 export const TIMES: readonly { id: TimeOfDay; label: string; caption: string; image: string }[] = [
-  { id: 'day', label: '清昼', caption: '山色如洗', image: 'scene-day.webp' },
-  { id: 'dusk', label: '夕照', caption: '金波映山', image: 'scene-dusk.webp' },
-  { id: 'night', label: '入夜', caption: '塔影流光', image: 'scene-night.webp' },
+  { id: 'morning', label: '清晨', caption: '江岸问路 · 竹筏待发', image: 'scene-day.webp' },
+  { id: 'noon', label: '正午', caption: '鸬鹚捕鱼 · 岸边鱼市', image: 'scene-day.webp' },
+  { id: 'dusk', label: '夕照', caption: '金波映山 · 静赏画卷', image: 'scene-dusk.webp' },
+  { id: 'night', label: '入夜', caption: '水影山歌 · 江上灯火', image: 'scene-night.webp' },
 ];
+
+export function artworkForTime(time: TimeOfDay): ArtworkVariant {
+  return time === 'morning' || time === 'noon' ? 'day' : time;
+}

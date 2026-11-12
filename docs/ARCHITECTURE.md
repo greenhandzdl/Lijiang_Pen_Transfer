@@ -37,3 +37,9 @@ ScrollEngine.ts [Pixi Application + 世界坐标 + 相机 + 角色 + 水纹 + �
 2. 独立步行动画 Atlas 和专用事件状态机，避免关键姿态单张模拟连续脚步。
 3. 把时辰三套的角色/建筑事件内容配置化，实现对山歌事件字幕、授权音频与退出/跳过。
 4. 首屏改为 day 快速呈现，夕照/夜景和不使用的 pose 后台加载，提高弱网体验；仍保持原始分辨率。
+
+## 四体验时段与事件分层（扩展）
+
+体验时段：`morning/noon/dusk/night`，原始背景三幅：`day/day/dusk/night`。分别使用 `artworkForTime()` 数据函数，不重复创建贴图；剧情列表位于 `src/content/encounters.ts`，提供静态位置、选择与行为。Pixi Graphics 热区触发 `onEncounter(id)` → React 对话，不应把 JSX 拼入 Pixi ticker。
+
+夜间镜头/灯光/无人机/倒影节拍由独立数值参数控制；当前没有合法可用音频，`setAudioEnergy` 是预留 API，节拍模拟必须被明确称作「静音节奏预览」。制作正式版本需要独立 night-effects 模块和 Web Audio AnalyserNode。详见 `docs/INTERACTION_PLAN.md`。

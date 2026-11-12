@@ -1,4 +1,5 @@
-import { useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { NightMusic } from '../engine/NightMusic';
 import ScrollStage from './ScrollStage';
 import { encountersFor, findEncounter, type EncounterId, type DialogueChoice, type NightView } from '../content/encounters';
 import {
@@ -35,6 +36,10 @@ export default function App() {
   const [nightLights, setNightLights] = useState(false);
   const [nightRhythm, setNightRhythm] = useState(false);
   const [nightDrones, setNightDrones] = useState(false);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [musicError, setMusicError] = useState('');
+  const [musicController, setMusicController] = useState<NightMusic | null>(null);
+  const musicRef = useRef<NightMusic | null>(null);
   const [previewId, setPreviewId] = useState<EncounterId>('cormorant');
   const [previewNumber, setPreviewNumber] = useState(0);
   const [place, setPlace] = useState<PlaceId>('elephant');
@@ -48,7 +53,48 @@ export default function App() {
   const [zoomNumber, setZoomNumber] = useState(0);
   const [zoomFactor, setZoomFactor] = useState(1);
 
+  useEffect(() => () => {
+    musicRef.current?.dispose();
+    musicRef.current = null;
+  }, []);
+
+  const toggleNightMusic = async () => {
+    let controller = musicRef.current;
+    if (!controller) {
+      controller = new NightMusic();
+      musicRef.current = controller;
+      setMusicController(controller);
+    }
+    try {
+      const playing = await controller.toggle();
+      setMusicPlaying(playing);
+      setMusicError('');
+      if (playing) {
+        setNightLights(true);
+        setNightRhythm(true);
+      }
+    } catch (error) {
+      console.error('Original night music playback failed', error);
+      controller.stop();
+      setMusicPlaying(false);
+      setMusicError('音乐播放失败，请检查浏览器是否允许音频播放，或稍后重试。');
+    }
+  };
+
+  const leavePainting = () => {
+    musicRef.current?.stop();
+    setMusicPlaying(false);
+    setMusicError('');
+    setWalking(0);
+    setEntered(false);
+  };
+
   const selectTime = (next: TimeOfDay) => {
+    if (next !== 'night') {
+      musicRef.current?.stop();
+      setMusicPlaying(false);
+      setMusicError('');
+    }
     setTime(next);
     setActiveEncounter(null);
     setEncounterReply('');
@@ -82,6 +128,8 @@ export default function App() {
     setReady(false);
     setError('');
     setPlace('elephant');
+    musicRef.current?.stop();
+    setMusicPlaying(false);
     closeEncounter();
   };
   const trigger = (type: 'gaze' | 'song') => {
@@ -144,7 +192,7 @@ export default function App() {
             <small>{TIMES.find((item) => item.id === time)?.caption}</small>
           </div>
           <div className="home-route">象鼻山 <i /> 日月双塔 <i /> 阳桥 <i /> 玻璃桥</div>
-          <span className="home-copyright">原幅高清画卷 · 互动 Demo 0.3</span>
+          <span className="home-copyright">原幅高清画卷 · 互动 Demo 0.4</span>
         </div>
       </main>
     );
@@ -155,6 +203,7 @@ export default function App() {
     <main className="experience">
       <ScrollStage mode={mode} time={time} target={place} walking={walking}
         nightView={nightView} nightLights={nightLights} nightRhythm={nightRhythm} nightDrones={nightDrones}
+        musicPlaying={musicPlaying} musicController={musicController}
         previewId={previewId} previewNumber={previewNumber}
         actionNumber={actionNumber} actionType={actionType}
         zoomNumber={zoomNumber} zoomFactor={zoomFactor}
@@ -162,7 +211,7 @@ export default function App() {
         onPosition={setProgress} onError={setError} />
       <div className="scene-frame" aria-hidden="true" />
       <header className="scene-header">
-        <button className="back-button" onClick={() => { setWalking(0); setEntered(false); }}>← 回到卷首</button>
+        <button className="back-button" onClick={leavePainting}>← 回到卷首</button>
         <div className="scene-brand"><span className="scene-seal">漓</span><span>漓江 <em>· 移笔游目</em></span></div>
         <button className="info-button" onClick={() => setHelp(true)}>游目指南 <span>ⓘ</span></button>
       </header>
@@ -181,7 +230,7 @@ export default function App() {
       {activeEncounter && findEncounter(activeEncounter).time === time && (
         <section className="encounter-sheet" role="region" aria-label={`${findEncounter(activeEncounter).title}互动`}>
           <button className="encounter-close" onClick={closeEncounter} aria-label="关闭互动">×</button>
-          <span className="encounter-eyebrow">{findEncounter(activeEncounter).kicker} · 交互预览</span>
+          <span className="encounter-eyebrow">{findEncounter(activeEncounter).kicker} · 插画互动</span>
           <h3>{findEncounter(activeEncounter).title}</h3>
           <p>{findEncounter(activeEncounter).intro}</p>
           {activeEncounter === 'night-stage' ? (
@@ -190,7 +239,7 @@ export default function App() {
                 <button className={nightView === 'shore' ? 'active' : ''} aria-pressed={nightView === 'shore'}
                   onClick={() => setNightView('shore')}>岸边观看</button>
                 <button className={nightView === 'boat' ? 'active' : ''} aria-pressed={nightView === 'boat'}
-                  onClick={() => setNightView('boat')}>船上观看（镜头预览）</button>
+                  onClick={() => setNightView('boat')}>船上观看（游船插画）</button>
               </div>
               <button onClick={() => setNightLights((value) => !value)} aria-pressed={nightLights}>
                 {nightLights ? '◉ 关闭灯光叠加' : '◎ 分段点亮江岸'}
@@ -201,11 +250,15 @@ export default function App() {
               }} aria-pressed={nightRhythm}>
                 {nightRhythm ? '◉ 关闭静音节奏预览' : '♫ 预览倒影节拍（静音）'}
               </button>
-              <button onClick={() => trigger('song')}>♪ 对山歌 · 人物姿态预览</button>
+              <button onClick={toggleNightMusic} aria-pressed={musicPlaying} className="night-music-button">
+                {musicPlaying ? 'Ⅱ 暂停原创器乐' : '♪ 播放原创器乐 · 音乐联动倒影'}
+              </button>
+              <button onClick={() => trigger('song')}>♫ 对山歌 · 人物姿态预览（无演唱）</button>
               <button onClick={() => setNightDrones((value) => !value)} aria-pressed={nightDrones}>
                 {nightDrones ? '◉ 关闭无人机光点' : '✧ 查看无人机概念光点'}
               </button>
-              <p className="night-note" role="status">当前：{nightView === 'shore' ? '岸边' : '模拟船上'}视角 · {nightLights ? '灯光开启' : '灯光关闭'} · {nightDrones ? '无人机效果开启' : '无人机效果关闭'}。尚无音乐与正式船体素材。</p>
+              <p className="night-note" role="status">当前：{nightView === 'shore' ? '岸边' : '游船'}视角 · {nightLights ? '灯光开启' : '灯光关闭'} · {nightDrones ? '无人机光点开启' : '无人机光点关闭'} · {musicPlaying ? '原创器乐播放中，倒影跟随实时频谱' : '未播放音乐'}。此器乐非传统山歌录音。</p>
+              {musicError && <p className="music-error" role="alert">{musicError}</p>}
             </div>
           ) : (
             <div className="dialogue-options">
@@ -261,7 +314,7 @@ export default function App() {
           <h2>游目指南</h2>
           <p>用鼠标或手指左右拖动画卷；滚轮或双指可缩放。按住左右箭头，或使用键盘 ← → / A D，让画中人沿岸行走。</p>
           <p>切换「清晨」「正午」「夕照」「入夜」会选择对应高清原画，其中清晨和正午共用白昼原画。点击渔人、鸬鹚、鱼市或夜游的画中热点与右侧事件按钮，体验互动脚本。</p>
-          <p className="help-note">当前版本使用原幅无损图片。渔人/鸬鹚/鱼市属于互动骨架；船上镜头、分段灯光、无人机光点和水面静音节拍是概念演示。暂无完整逐帧动画、授权音乐或真实无人机演出记录。</p>
+          <p className="help-note">当前版本使用原幅无损画卷、四张新绘制的透明交互插画，以及项目专门创作的器乐示范音轨。夜间「播放原创器乐」可用真实频谱驱动水面反射；静音节奏预览仍独立可用。渔人整理竹筏、鸬鹚潜水和对山歌人声尚无完整动画与正式演唱，无人机光点属于虚拟概念演示。</p>
         </section>
       </div>}
     </main>

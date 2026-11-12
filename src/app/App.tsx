@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+const ElephantIntro = lazy(() => import('./ElephantIntro'));
 import { NightMusic } from '../engine/NightMusic';
 import ScrollStage from './ScrollStage';
 import { encountersFor, findEncounter, type EncounterId, type DialogueChoice, type NightView } from '../content/encounters';
@@ -28,6 +29,7 @@ function TimeSwitcher({ time, onTime, compact = false }: {
 
 export default function App() {
   const [entered, setEntered] = useState(false);
+  const [introOpen, setIntroOpen] = useState(false);
   const [mode, setMode] = useState<VisitMode>('guided');
   const [time, setTime] = useState<TimeOfDay>('morning');
   const [activeEncounter, setActiveEncounter] = useState<EncounterId | null>(null);
@@ -89,6 +91,7 @@ export default function App() {
     setActiveEncounter(null);
     setHelp(false);
     setEntered(false);
+    setIntroOpen(false);
   };
 
   const selectTime = (next: TimeOfDay) => {
@@ -166,13 +169,27 @@ export default function App() {
 
   const selectMode = (newMode: VisitMode) => {
     setMode(newMode);
-    setEntered(true);
+    setEntered(newMode === 'free');
+    setIntroOpen(newMode === 'guided');
     setReady(false);
     setError('');
     setPlace('elephant');
     musicRef.current?.stop();
     setMusicPlaying(false);
     closeEncounter();
+  };
+  const completeIntro = () => {
+    setIntroOpen(false);
+    setEntered(true);
+    setReady(false);
+  };
+  const replayIntro = () => {
+    musicRef.current?.stop();
+    setMusicPlaying(false);
+    setWalking(0);
+    setActiveEncounter(null);
+    setIntroOpen(true);
+    setEntered(false);
   };
   const trigger = (type: 'gaze' | 'song') => {
     setActionType(type);
@@ -191,6 +208,14 @@ export default function App() {
     onPointerCancel: () => setWalking(0),
     onLostPointerCapture: () => setWalking(0),
   });
+
+  if (introOpen) {
+    return (
+      <Suspense fallback={<main className="elephant-intro elephant-loading" role="status"><span>水月洞天，正徐徐展开…</span><button className="elephant-skip" onClick={completeIntro}>直接入画 ↗</button></main>}>
+        <ElephantIntro time={time} onComplete={completeIntro} />
+      </Suspense>
+    );
+  }
 
   if (!entered) {
     return (
@@ -250,7 +275,10 @@ export default function App() {
       <header className="scene-header">
         <button className="back-button" onClick={leavePainting}>← 回到卷首</button>
         <div className="scene-brand"><span className="scene-seal">漓</span><span>漓江 <em>· 移笔游目</em></span></div>
-        <button className="info-button" onClick={() => setHelp(true)}>游目指南 <span>ⓘ</span></button>
+        <div className="scene-header-actions">
+          <button className="info-button scene-replay" onClick={replayIntro}>重看象山序章 ↻</button>
+          <button className="info-button" onClick={() => setHelp(true)}>游目指南 <span>ⓘ</span></button>
+        </div>
       </header>
       <div className="scene-time"><TimeSwitcher time={time} onTime={selectTime} compact /></div>
       <div className="scene-label">桂林山水 · 四景入卷</div>

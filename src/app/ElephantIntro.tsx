@@ -75,7 +75,7 @@ export default function ElephantIntro({ onComplete, time }: Props) {
 
   const chapter = CHAPTERS[beat];
   return (
-    <main className={'elephant-intro elephant-' + beat} aria-label="象鼻山入画三维序章">
+    <main className={'elephant-intro elephant-' + beat + ' elephant-time-' + time} aria-label="象鼻山入画三维序章">
       <div className="elephant-render" ref={mount} aria-hidden="true" />
       <div className="elephant-papergrain" aria-hidden="true" />
       <header className="elephant-topline">

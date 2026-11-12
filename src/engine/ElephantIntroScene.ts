@@ -7,6 +7,7 @@ import type { TimeOfDay } from '../content/places';
  * Coordinates are artistic, NOT a navigable/real-world waterway model.
  */
 export type IntroBeat = 'orbit' | 'cave' | 'dock' | 'poem';
+export type IntroSequence = 'entrance' | 'finale';
 export const INTRO_SECONDS = 15.2;
 
 type Callbacks = {
@@ -291,6 +292,8 @@ export class ElephantIntroScene {
   private readonly water: THREE.ShaderMaterial;
   private readonly route: THREE.CatmullRomCurve3;
   private readonly callbacks: Callbacks;
+  private readonly sequence: IntroSequence;
+  private readonly reducedMotion: boolean;
   private readonly container: HTMLElement;
   private readonly resizeObserver: ResizeObserver;
   private readonly start = performance.now();
@@ -299,9 +302,11 @@ export class ElephantIntroScene {
   private disposed = false;
   private finished = false;
 
-  constructor(container: HTMLElement, artRoot: string, time: TimeOfDay, callbacks: Callbacks) {
+  constructor(container: HTMLElement, artRoot: string, time: TimeOfDay, sequence: IntroSequence, callbacks: Callbacks) {
     this.container = container;
     this.callbacks = callbacks;
+    this.sequence = sequence;
+    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const small = window.innerWidth < 720;
     this.renderer = new THREE.WebGLRenderer({
       antialias: !small, alpha: false, powerPreference: 'low-power',
@@ -374,8 +379,11 @@ export class ElephantIntroScene {
 
   private animate = (now: number) => {
     if (this.disposed) return;
-    const p = clamp01((now - this.start) / (INTRO_SECONDS * 1000));
-    const beat: IntroBeat = p < 0.27 ? 'orbit' : p < 0.58 ? 'cave' : p < 0.85 ? 'dock' : 'poem';
+    const duration = this.sequence === 'finale' ? 9000 : INTRO_SECONDS * 1000;
+    const p = this.reducedMotion ? 1 : clamp01((now - this.start) / duration);
+    const beat: IntroBeat = this.sequence === 'finale'
+      ? (p < 0.58 ? 'orbit' : 'poem')
+      : p < 0.27 ? 'orbit' : p < 0.58 ? 'cave' : p < 0.85 ? 'dock' : 'poem';
     if (beat !== this.lastBeat) {
       this.lastBeat = beat;
       this.callbacks.onBeat(beat);
@@ -425,17 +433,28 @@ export class ElephantIntroScene {
     this.figure.visible = p > 0.34;
     const portrait = this.figure.children.find((child): child is THREE.Sprite => child instanceof THREE.Sprite);
     if (portrait) portrait.material.opacity = Math.min(1, (p - 0.34) * 14);
-    this.water.uniforms.uTime.value = now / 1000;
+    if (this.sequence === 'finale') {
+      const orbitEnd = smooth(p / 0.85);
+      const angle = lerp(0.75, 0.12, orbitEnd);
+      this.camera.position.set(Math.sin(angle) * 21, lerp(7.0, 5.3, orbitEnd), Math.cos(angle) * 21);
+      this.camera.lookAt(-0.6, 2.7, 0.2);
+      this.boat.position.set(3.1, 0.19, 10.0);
+      this.boat.rotation.set(0, 0.68, 0);
+      this.figure.position.set(5.55, 0.70, 10.35);
+      this.figure.visible = true;
+      if (portrait) portrait.material.opacity = 1;
+    }
+    this.water.uniforms.uTime.value = this.reducedMotion ? 0 : now / 1000;
     this.renderer.render(this.scene, this.camera);
 
-    if (p >= 1) {
+    if (p >= 1 && this.sequence === 'entrance') {
       if (!this.finished) {
         this.finished = true;
         this.callbacks.onComplete();
       }
       return;
     }
-    this.frame = requestAnimationFrame(this.animate);
+    if (!this.reducedMotion) this.frame = requestAnimationFrame(this.animate);
   };
 
   dispose() {

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { IntroBeat } from '../engine/ElephantIntroScene';
+import { artworkForTime, type TimeOfDay } from '../content/places';
 
 type Props = {
+  time: TimeOfDay;
   onComplete: () => void;
 };
 
@@ -12,7 +14,7 @@ const CHAPTERS: Record<IntroBeat, { number: string; title: string; subtitle: str
   poem: { number: '序 · 终', title: '人已入画', subtitle: '山水待你，以步为笔' },
 };
 
-export default function ElephantIntro({ onComplete }: Props) {
+export default function ElephantIntro({ onComplete, time }: Props) {
   const mount = useRef<HTMLDivElement | null>(null);
   const completeRef = useRef(onComplete);
   const completed = useRef(false);
@@ -38,13 +40,13 @@ export default function ElephantIntro({ onComplete }: Props) {
     // Kick off the panorama download during the 3D prologue, while never
     // changing its dimensions, encoding, or role as the Pixi world artwork.
     const prefetch = new Image();
-    prefetch.src = import.meta.env.BASE_URL + 'art/scene-day.webp';
+    prefetch.src = import.meta.env.BASE_URL + 'art/scene-' + artworkForTime(time) + '.webp';
 
     void import('../engine/ElephantIntroScene').then(({ ElephantIntroScene }) => {
       if (disposed || !mount.current) return;
       try {
         instance = new ElephantIntroScene(
-          mount.current, import.meta.env.BASE_URL + 'art/',
+          mount.current, import.meta.env.BASE_URL + 'art/', time,
           { onBeat: (next) => { if (!disposed) setBeat(next); },
             onComplete: () => { if (!disposed) completeRef.current(); } },
         );

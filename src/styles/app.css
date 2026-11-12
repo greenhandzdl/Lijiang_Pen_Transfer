@@ -25,3 +25,69 @@
 @media(max-width:600px){.home-gallery-image{object-position:46% 50%}.home-wash{background:linear-gradient(90deg,#eee0bee8,#ebe0c2c2 61%,#d9ceb487),linear-gradient(180deg,#e5d5b3af,transparent 45%,#e3d3b48e)}.home-header{padding:19px}.home-brand{font-size:14px}.home-brand small{font-size:9px}.seal{width:37px;height:37px;font-size:23px}.home-intro{width:min(340px,88vw);margin-left:8vw;padding:10px 0 30px}.home-eyebrow{font-size:9px;letter-spacing:.12em}.home-intro h1{font-size:78px}.home-intro h1 span{font-size:25px}.home-verse{font-size:15px}.home-description{font-size:12px;max-width:300px;line-height:1.95}.home-actions{width:min(315px,88vw)}.home-actions button{min-height:60px}.home-bottom{padding:11px 18px 19px}.home-times{gap:8px;flex-wrap:wrap}.home-times>small{display:none}.time-switcher button{padding:7px 10px}.scene-header{padding:8px 12px 18px}.scene-brand{font-size:19px;gap:7px}.scene-brand em{font-size:11px}.scene-seal{width:26px;height:26px;font-size:16px}.back-button,.info-button{padding:7px 9px;font-size:10px;min-height:39px}.info-button span{margin-left:0}.scene-time{top:64px;right:10px}.scene-time .time-switcher button{padding:6px 9px;min-height:32px;font-size:11px}.place-card{left:10px;bottom:166px;width:min(247px,69vw);padding:10px 12px}.place-card h2{font-size:22px;margin:3px 0}.place-heading{font-size:10px}.place-card p{font-size:11px;line-height:1.45}.place-footer{margin-top:7px}.place-footer button{min-height:34px;font-size:11px}.scene-landmarks{left:9px;right:9px;bottom:83px;padding:4px;gap:1px}.scene-landmarks button{display:flex;flex-direction:column;min-width:0;min-height:44px;gap:2px;padding:4px}.scene-landmarks strong{font-size:11px}.scene-landmarks small{font-size:9px}.scene-controls{gap:8px;padding:10px}.control-walk,.control-view{gap:4px}.control-walk span{display:none}.control-walk button,.control-view button{min-width:42px;min-height:44px}}
 @media(max-height:680px) and (min-width:800px){.place-card{bottom:88px;padding:9px 15px}.place-card p{font-size:11px}.scene-landmarks{bottom:83px}.home-intro{padding:10px 0}.home-intro h1{font-size:84px}.home-description{line-height:1.6}.home-header{padding:12px 25px}.home-bottom{padding:8px 20px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}}
+
+
+/* M3 — period-specific encounters: overlay UI, never repaint original HD artwork. */
+.encounter-rail,.encounter-sheet{position:absolute;right:28px;z-index:4;color:#57452e;
+  background:linear-gradient(152deg,rgba(248,236,211,.96),rgba(229,211,174,.93));
+  border:1px solid #b99d72;box-shadow:0 9px 25px #2d241a25;backdrop-filter:blur(9px)}
+.encounter-rail{top:159px;width:247px;padding:11px;display:flex;flex-direction:column;gap:6px}
+.encounter-eyebrow{font-size:10px;letter-spacing:.18em;color:#936d46;font-weight:500}
+.encounter-rail>.encounter-eyebrow{padding:2px 4px 6px}
+.encounter-rail button{width:100%;display:flex;gap:12px;align-items:center;border:1px solid #d3b995;
+ background:#fff9eb94;color:#574631;min-height:51px;text-align:left;padding:9px 11px}
+.encounter-rail button.active{border-color:#9b7951;background:#e5cda2}
+.encounter-rail button span:last-child{display:flex;flex-direction:column;gap:3px}
+.encounter-rail strong{font-weight:500;letter-spacing:.08em;font-size:13px}
+.encounter-rail small{font-size:10px;color:#876c4c}
+.encounter-dot{font-size:18px;color:#a68151}
+.encounter-rest{margin:0;padding:6px 4px 8px;font-size:12px;line-height:1.7}
+.encounter-sheet{z-index:7;top:264px;bottom:94px;width:min(365px,calc(100vw - 45px));
+ min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:19px 21px 18px}
+.encounter-sheet h3{font-size:25px;font-weight:500;letter-spacing:.14em;margin:8px 20px 11px 0}
+.encounter-sheet>p{font-size:13px;line-height:1.85;margin:0 0 12px}
+.encounter-sheet>.encounter-disclaimer{display:block;border-top:1px solid #ccb591;
+ padding-top:11px;margin-top:13px;font-size:11px;line-height:1.7;color:#846e52}
+.encounter-close{position:absolute;right:9px;top:5px;background:none;border:0;font-size:27px;
+ width:36px;height:36px;color:#6e593c}
+.dialogue-options,.night-actions{display:grid;gap:8px}
+.dialogue-options button,.night-actions>button,.night-view button{
+ border:1px solid #af9067;background:#f6e9d0;color:#60492c;
+ font-size:12px;letter-spacing:.05em;text-align:left;padding:10px 12px;min-height:41px}
+.dialogue-options button:active,.night-actions button:active{background:#806345;color:#fff1d6}
+.night-actions>button[aria-pressed="true"],.night-view button.active{background:#76593d;color:#f9e9c8;border-color:#76593d}
+.night-view{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.night-view button{text-align:center;padding:8px 5px;font-size:11px}
+.night-note{font-size:11px;line-height:1.65;margin:1px 0 0;color:#826545}
+.encounter-reply{padding:10px 11px!important;margin-top:12px!important;border-left:3px solid #a78054;
+ background:#fff4dd;font-size:12px!important;line-height:1.8!important;color:#58452c}
+@media(max-width:1100px){
+ .encounter-rail,.encounter-sheet{right:17px}
+ .encounter-rail{top:142px;width:228px}
+ .encounter-sheet{top:244px}
+}
+@media(max-width:800px){
+ .encounter-rail{right:13px;top:130px;width:206px;padding:7px}
+ .encounter-rail button{min-height:43px;padding:7px;gap:7px}
+ .encounter-sheet{top:226px;right:12px;bottom:151px;width:min(304px,48vw);padding:12px 14px}
+ .encounter-sheet h3{font-size:22px}
+}
+@media(max-width:600px){
+ .scene-time{z-index:5}
+ .encounter-rail{top:112px;right:9px;width:min(207px,55vw);gap:3px}
+ .encounter-rail>.encounter-eyebrow{padding-bottom:2px}
+ .encounter-rail button{min-height:42px}
+ .encounter-rail strong{font-size:12px}
+ .encounter-rail small{font-size:9px}
+ .encounter-sheet{right:8px;top:215px;bottom:157px;width:min(305px,calc(100vw - 16px));padding:12px}
+ .encounter-sheet h3{font-size:21px;margin-top:7px}
+ .encounter-sheet>p{font-size:12px;line-height:1.6}
+ .dialogue-options button,.night-actions>button{min-height:40px}
+ .time-switcher.time-compact button{padding:6px 7px;font-size:10px;letter-spacing:.08em}
+ .home-times{gap:7px}
+ .home-times .time-switcher button{padding:7px 8px;letter-spacing:.08em}
+}
+@media(max-height:620px) {
+ .encounter-sheet{top:177px;bottom:85px}
+ .encounter-rail{top:116px}
+}

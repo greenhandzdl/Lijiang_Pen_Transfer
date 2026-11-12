@@ -294,3 +294,9 @@
 /* Keep the location label and story discoveries in separate visual rows. */
 .encounter-rail{top:188px}
 @media(max-width:700px){.encounter-rail{top:132px}}
+
+
+@media(max-width:700px){
+  .place-card{top:105px}
+  .encounter-rail{top:166px}
+}

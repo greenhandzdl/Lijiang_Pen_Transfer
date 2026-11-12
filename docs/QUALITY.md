@@ -2,7 +2,7 @@
 
 ## 本地命令
 ```bash
-npm ci
+npm install
 npm run dev
 npm run typecheck
 npm run build
@@ -24,7 +24,7 @@ Workflow 使用 `actions/checkout`、`actions/setup-node`、`actions/configure-p
 
 ## Release checklist
 1. 保留原始图、校对 `docs/ASSETS.md` 的版权状态。
-2. `npm ci && npm run typecheck && npm run build` 通过。
+2. `npm install && npm run typecheck && npm run build` 通过。
 3. 检查 `dist/` 不含无关素材、源文件或大图母版。
 4. 电脑和实体手机实际检查，UI 不遮住角色/热点。
 5. 校对部署 URL 和 GitHub Actions 日志。

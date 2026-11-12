@@ -13,7 +13,7 @@
 需要 Node.js 22 或更新版本：
 
 ```bash
-npm ci
+npm install
 npm run dev
 # http://localhost:5173/Lijiang_Pen_Transfer/
 npm run typecheck

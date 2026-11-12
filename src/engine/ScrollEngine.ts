@@ -235,7 +235,7 @@ export class ScrollEngine {
     this.clampCamera();
     this.world.scale.set(this.zoom);
     this.world.x = -this.cameraX * this.zoom;
-    this.world.y = (this.host.clientHeight - WORLD_H * this.zoom) / 2;
+    this.world.y = this.host.clientHeight * 0.78 - GROUND_Y * this.zoom;
     this.emitPosition();
   }
 

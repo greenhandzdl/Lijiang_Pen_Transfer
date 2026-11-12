@@ -98,8 +98,7 @@ export default function App() {
       setMusicError('');
     }
     setTime(next);
-    setActiveEncounter(null);
-    setEncounterReply('');
+    closeEncounter();
   };
 
   const openEncounter = (id: EncounterId) => {
@@ -115,6 +114,11 @@ export default function App() {
   };
 
   const closeEncounter = () => {
+    if (activeEncounter === 'night-stage' && musicRef.current?.playing) {
+      musicRef.current.stop();
+      setMusicPlaying(false);
+    }
+    setMusicError('');
     setActiveEncounter(null);
     setEncounterReply('');
   };
@@ -240,7 +244,7 @@ export default function App() {
         previewId={previewId} previewNumber={previewNumber}
         actionNumber={actionNumber} actionType={actionType}
         zoomNumber={zoomNumber} zoomFactor={zoomFactor}
-        onReady={() => setReady(true)} onPlace={setPlace} onEncounter={openEncounter}
+        onReady={() => setReady(true)} onPlace={navigatePlace} onEncounter={openEncounter}
         onPosition={setProgress} onError={setError} />
       <div className="scene-frame" aria-hidden="true" />
       <header className="scene-header">

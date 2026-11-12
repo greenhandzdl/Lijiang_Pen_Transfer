@@ -1,6 +1,7 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { ENCOUNTERS, type EncounterId } from '../content/encounters';
 import { NightEffects, type NightControls } from './NightEffects';
+import type { NightMusic } from './NightMusic';
 import {
   PLACES, WORLD_HEIGHT, WORLD_WIDTH, artworkForTime,
   type ArtworkVariant, type PlaceId, type TimeOfDay, type VisitMode,
@@ -58,8 +59,10 @@ export class ScrollEngine {
   private readonly actors = new Map<Pose, Texture>();
   private readonly markers = new Container();
   private readonly encounterMarkers = new Map<EncounterId, Container>();
+  private readonly encounterSprites = new Map<EncounterId, Sprite>();
   private readonly encounterLayer = new Container();
   private readonly nightEffects = new NightEffects();
+  private music: NightMusic | null = null;
   private readonly ripplesLayer = new Graphics();
   private readonly activePointers = new Map<number, Point>();
   private ripples: Ripple[] = [];
@@ -70,7 +73,7 @@ export class ScrollEngine {
   private visible = true;
   private mode: VisitMode = 'guided';
   private time: TimeOfDay = 'morning';
-  private nightControls: NightControls = { view: 'shore', lights: false, rhythm: false, drones: false };
+  private nightControls: NightControls = { view: 'shore', lights: false, rhythm: false, music: false, drones: false };
   private heroX = 260;
   private facing = 1;
   private walkDirection = 0;
@@ -157,6 +160,9 @@ export class ScrollEngine {
       this.fitToHeight();
       this.app.ticker.add(this.tick);
       this.callbacks.onReady();
+      // High-resolution original panoramas are already visible. Compact new NPC
+      // sprites now load progressively without delaying first paint.
+      void this.loadEncounterSprites();
     } catch (error) {
       console.error('Unable to initialize showcase artwork', error);
       if (!this.disposed) this.callbacks.onError('画卷加载失败：请检查网络，或刷新页面重新加载。');
@@ -213,6 +219,34 @@ export class ScrollEngine {
     }
   }
 
+  private async loadEncounterSprites(): Promise<void> {
+    // Individual failures leave the accessible marker and story controls in place.
+    await Promise.all(ENCOUNTERS.map(async (encounter) => {
+      try {
+        const texture = await Assets.load<Texture>(art(encounter.spriteFile));
+        if (this.disposed) return;
+        const marker = this.encounterMarkers.get(encounter.id);
+        if (!marker) return;
+        const sprite = new Sprite(texture);
+        sprite.anchor.set(0.5, 1);
+        sprite.width = encounter.spriteWidth;
+        sprite.height = encounter.spriteWidth * texture.height / texture.width;
+        sprite.eventMode = 'none';
+        sprite.alpha = encounter.time === 'night' ? 0.95 : 1;
+        marker.addChildAt(sprite, 0);
+        // Click anywhere on the illustration, including the original small ring.
+        marker.hitArea = {
+          contains: (x: number, y: number) =>
+            Math.abs(x) < encounter.spriteWidth * 0.51 &&
+            y > -sprite.height && y < 22,
+        };
+        this.encounterSprites.set(encounter.id, sprite);
+      } catch (error) {
+        console.warn(`Optional encounter art unavailable: ${encounter.spriteFile}`, error);
+      }
+    }));
+  }
+
   private updateEncounterVisibility(): void {
     for (const encounter of ENCOUNTERS) {
       const marker = this.encounterMarkers.get(encounter.id);
@@ -238,7 +272,12 @@ export class ScrollEngine {
     this.applyCamera();
   }
 
-  /** Future Web Audio analyser/beat-envelope integration point. */
+  /** Attach audio analysis without passing each-frame values through React. */
+  setMusicController(controller: NightMusic | null): void {
+    this.music = controller;
+    if (!controller) this.nightEffects.setAudioEnergy(0);
+  }
+
   setAudioEnergy(energy: number): void {
     this.nightEffects.setAudioEnergy(energy);
   }
@@ -397,7 +436,13 @@ export class ScrollEngine {
     if (!this.hero || !this.visible || this.disposed) return;
     const dt = Math.min(MAX_FRAME_TIME, ticker.deltaMS / 1000);
     this.elapsed += dt;
+    this.nightEffects.setAudioEnergy(this.time === 'night' && this.music ? this.music.sampleEnergy() : 0);
     this.nightEffects.draw(dt, this.time === 'night', this.nightControls, this.reducedMotion);
+    // Only the raft-on-water and lantern boat receive a subtle floating motion.
+    for (const id of ['cormorant', 'night-stage'] as const) {
+      const sprite = this.encounterSprites.get(id);
+      if (sprite) sprite.y = this.reducedMotion ? 0 : Math.sin(this.elapsed * 1.65 + (id === 'night-stage' ? 1 : 0)) * 1.8;
+    }
     if (this.time === 'night' && this.nightControls.view === 'boat') this.applyCamera();
     for (const [id, sprite] of this.backgrounds) {
       const desired = id === artworkForTime(this.time) ? 1 : 0;
@@ -469,6 +514,8 @@ export class ScrollEngine {
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.app.ticker.remove(this.tick);
     this.nightEffects.clear();
+    this.encounterSprites.clear();
+    this.music = null;
     this.app.destroy(true, { children: true, texture: false, textureSource: false });
     this.ready = false;
   }

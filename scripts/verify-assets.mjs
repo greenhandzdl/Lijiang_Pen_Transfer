@@ -35,10 +35,21 @@ function getDimensions(buffer) {
     if (type === 'VP8X') {
       const width = buffer.readUIntLE(offset + 12, 3) + 1;
       const height = buffer.readUIntLE(offset + 15, 3) + 1;
-      // Continue to VP8L and validate that compression really is lossless.
+      // Continue to VP8L and validate whether compression is lossless.
       const rest = buffer.subarray(offset + 8 + chunkLength + (chunkLength % 2));
       const next = getDimensionsForNested(rest);
       return { width, height, lossless: next };
+    }
+    if (type === 'VP8 ') {
+      const frame = offset + 8;
+      if (buffer[frame + 3] !== 0x9d || buffer[frame + 4] !== 0x01 || buffer[frame + 5] !== 0x2a) {
+        throw Error('Invalid VP8 frame header');
+      }
+      return {
+        width: buffer.readUInt16LE(frame + 6) & 0x3fff,
+        height: buffer.readUInt16LE(frame + 8) & 0x3fff,
+        lossless: false,
+      };
     }
     offset += 8 + chunkLength + (chunkLength % 2);
   }
@@ -69,6 +80,18 @@ for (const [filename, expectedWidth, expectedHeight, minBytes] of manifest) {
     ok = false;
     console.error(`FAIL ${filename}: ${error.message}`);
   }
+}
+// The homepage has its own 16:9 illustration. It is intentionally a separate
+// asset from the 3:1 in-scene scroll paintings, so the home hero never crops them.
+try {
+  const bytes = readFileSync(new URL('../public/art/home-background.webp', import.meta.url));
+  const { width, height, lossless } = getDimensions(bytes);
+  const good = width === 1672 && height === 941 && bytes.length >= 500_000 && bytes.length <= 750_000 && !lossless;
+  if (!good) ok = false;
+  console.log(`${good ? 'OK' : 'FAIL'} home-background.webp: ${width}x${height}, ${bytes.length.toLocaleString()} bytes, dedicated 16:9 hero`);
+} catch (error) {
+  ok = false;
+  console.error(`FAIL home-background.webp: ${error.message}`);
 }
 if (!ok) process.exitCode = 1;
 /** New mini NPC overlays are intentionally small lossy-alpha WebP. Unlike the

@@ -24,7 +24,7 @@ test('Story hotspots are unique, reachable and inside the native painting coordi
     assert.ok(TIMES.some((time) => time.id === encounter.time), 'valid period');
     assert.ok(PLACES.some((place) => place.id === encounter.place), 'valid landmark');
     assert.ok(/^npc-[a-z]+\.webp$/.test(encounter.spriteFile), 'sprite maps to compact resource');
-    assert.ok(encounter.spriteWidth >= 120 && encounter.spriteWidth <= 280, 'sprite has bounded world size');
+    assert.ok(encounter.spriteWidth >= 55 && encounter.spriteWidth <= 125, 'story art remains a small scene detail');
     assert.ok(encounter.worldX >= 0 && encounter.worldX <= WORLD_WIDTH, 'x within scroll');
     assert.ok(encounter.worldY >= 0 && encounter.worldY <= WORLD_HEIGHT, 'y within scroll');
     assert.equal(findEncounter(encounter.id), encounter);

@@ -52,3 +52,11 @@
 - 原创器乐 `night-river-original.mp3` 不是山歌录音。绝不将它标注为传统歌曲/非遗原声；用户点击才播放，离开夜景要停。
 - 真正音乐频谱由 `NightMusic.sampleEnergy` 提供给 Pixi `NightEffects`；不得把每帧音频能量写进 React State。
 - 新增资源大小、alpha、音频文件头在 `npm run verify:assets` 及 Pages `curl` smoke test 验证；新增资源需要标注体积预算。
+
+
+## 视觉层级规则（2026-11-12）
+
+- 首页 16:9 必须使用 `home-background.webp`，不可将 3:1 场景图裁切填满首页。
+- 2172×724 长卷是主角；新 NPC/船体只作为次要场景细节，默认世界宽度不超过 125px。触控 hitArea 可扩大，但不扩大可见 Sprite。
+- 默认场景 HUD 要克制：轻量地点签、时辰、横向故事入口、底部路线和控制；剧情详情只在用户点击后显示一张上下文卡片。
+- 不用生成式图片代替 UI 实装；交互 mockup 仅供视觉方向参考。

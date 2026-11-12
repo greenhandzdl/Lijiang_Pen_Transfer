@@ -174,11 +174,6 @@ export default function App() {
     setActionType(type);
     setActionNumber((n) => n + 1);
   };
-  const moveOne = (offset: number) => {
-    const index = PLACES.findIndex((p) => p.id === place);
-    const next = PLACES[Math.max(0, Math.min(PLACES.length - 1, index + offset))];
-    navigatePlace(next.id);
-  };
   const magnify = (factor: number) => {
     setZoomFactor(factor);
     setZoomNumber((n) => n + 1);

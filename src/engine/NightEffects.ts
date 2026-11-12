@@ -5,13 +5,14 @@ export type NightControls = {
   view: NightView;
   lights: boolean;
   rhythm: boolean;
+  music: boolean;
   drones: boolean;
 };
 
 type Lamp = { x: number; y: number };
 /**
  * Lightweight overlay PREVIEW. Does not recolor or alter the original painting.
- * Future audio graph may call setAudioEnergy(0..1) with FFT/beat envelope.
+ * Actual AudioContext analyser may call setAudioEnergy(0..1) each Pixi frame.
  */
 export class NightEffects {
   readonly graphics = new Graphics();
@@ -50,7 +51,7 @@ export class NightEffects {
     }
 
     if (controls.lights && litCount > 0) {
-      const previewBeat = controls.rhythm && !reducedMotion
+      const previewBeat = controls.rhythm && !controls.music && !reducedMotion
         ? Math.pow(Math.max(0, Math.sin(this.elapsed * 3.1)), 4)
         : 0;
       const beatEnergy = Math.max(previewBeat, this.externalEnergy);

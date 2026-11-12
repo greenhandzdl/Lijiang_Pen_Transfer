@@ -21,6 +21,9 @@ export interface Encounter {
   place: PlaceId;
   worldX: number;
   worldY: number;
+  /** Compact generated overlay. Original panoramic paintings are never modified. */
+  spriteFile: string;
+  spriteWidth: number;
   title: string;
   kicker: string;
   intro: string;
@@ -34,11 +37,13 @@ export const ENCOUNTERS: readonly Encounter[] = [
     time: 'morning',
     place: 'elephant',
     worldX: 332,
-    worldY: 424,
+    worldY: 470,
+    spriteFile: 'npc-fisher.webp',
+    spriteWidth: 163,
     title: '江岸渔人',
     kicker: '清晨 · 整理竹筏',
     intro: '一位渔人正在江岸整理竹筏和竹篙。你可以停下脚步，向他问路。',
-    detail: '当前是点击与对话的交互样机；整理竹筏动画与正式人物立绘等待美术资源。',
+    detail: '已加入原创渔人/竹筏透明插画，可点击问路；整理竹筏的连续逐帧动作仍待制作。',
     choices: [
       {
         id: 'ask-elephant',
@@ -58,11 +63,13 @@ export const ENCOUNTERS: readonly Encounter[] = [
     time: 'noon',
     place: 'towers',
     worldX: 1048,
-    worldY: 493,
+    worldY: 529,
+    spriteFile: 'npc-cormorant.webp',
+    spriteWidth: 197,
     title: '鸬鹚捕鱼',
     kicker: '正午 · 江面生计',
     intro: '阳光照着江面，鸬鹚捕鱼与渔民劳作的场景即将展开。',
-    detail: '演示阶段仅提供点击涟漪反馈；鸬鹚游水、潜水、衔鱼、回筏都需要独立动画素材。',
+    detail: '已加入鸬鹚捕鱼与渔筏插画；水纹可以点击触发，潜水及收鱼的完整逐帧动作仍待制作。',
     choices: [
       {
         id: 'watch-dive',
@@ -82,11 +89,13 @@ export const ENCOUNTERS: readonly Encounter[] = [
     time: 'noon',
     place: 'yangbridge',
     worldX: 1442,
-    worldY: 459,
+    worldY: 478,
+    spriteFile: 'npc-market.webp',
+    spriteWidth: 168,
     title: '岸边鱼市',
     kicker: '正午 · 人间烟火',
     intro: '岸边围起了小小的鱼摊。你可以询问今日的渔获，体验一段购买对话。',
-    detail: '购买是剧情模拟，不涉及真实货币、支付或订单。',
+    detail: '已加入原创鱼市摊主和鱼篓插画。购买仍是剧情模拟，不涉及真实货币、支付或订单。',
     choices: [
       {
         id: 'ask-catch',
@@ -105,11 +114,13 @@ export const ENCOUNTERS: readonly Encounter[] = [
     time: 'night',
     place: 'glassbridge',
     worldX: 1798,
-    worldY: 320,
+    worldY: 532,
+    spriteFile: 'npc-nightboat.webp',
+    spriteWidth: 262,
     title: '夜游漓江',
     kicker: '入夜 · 江上光影',
     intro: '选择岸边或船上观看，逐段点亮江岸灯光，欣赏山歌和无人机灯光的概念预演。',
-    detail: '夜景灯光叠加、波纹和无人机光点是矢量效果演示；同步音乐、真实船只及编队动画尚待资源。',
+    detail: '已加入原创夜游船插画和原创器乐示范音轨。音频频谱可驱动倒影；山歌人声、真实船体运动和无人机编队仍待制作。',
     choices: [],
   },
 ] as const;

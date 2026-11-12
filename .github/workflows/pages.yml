@@ -89,4 +89,25 @@ jobs:
             fi
             echo "OK ${NAME}.webp: ${SIZE} bytes"
           done
+          echo "Checking four compact NPC/boat sprites"
+          for NAME in npc-fisher npc-cormorant npc-market npc-nightboat; do
+            FILE="/tmp/${NAME}.webp"
+            curl --fail-with-body --location --retry 5 --retry-delay 3 --retry-all-errors \
+              --silent --show-error "${PAGE_URL%/}/art/${NAME}.webp" -o "${FILE}"
+            SIZE="$(stat -c %s "${FILE}")"
+            if [[ "${SIZE}" -lt 60000 || "${SIZE}" -gt 260000 ]]; then
+              echo "::error::Wrong NPC sprite size ${NAME}: ${SIZE} bytes"
+              exit 1
+            fi
+            echo "OK ${NAME}.webp: ${SIZE} bytes"
+          done
+          echo "Checking original instrumental track"
+          curl --fail-with-body --location --retry 5 --retry-delay 3 --retry-all-errors \
+            --silent --show-error "${PAGE_URL%/}/audio/night-river-original.mp3" -o /tmp/night-river-original.mp3
+          AUDIO_SIZE="$(stat -c %s /tmp/night-river-original.mp3)"
+          if [[ "${AUDIO_SIZE}" -lt 70000 || "${AUDIO_SIZE}" -gt 230000 ]]; then
+            echo "::error::Original night audio missing / wrong size: ${AUDIO_SIZE} bytes"
+            exit 1
+          fi
+          echo "OK original music MP3: ${AUDIO_SIZE} bytes"
           echo "HTTP smoke test passed"

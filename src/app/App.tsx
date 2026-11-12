@@ -29,7 +29,7 @@ function TimeSwitcher({ time, onTime, compact = false }: {
 
 export default function App() {
   const [entered, setEntered] = useState(false);
-  const [introOpen, setIntroOpen] = useState(false);
+  const [introKind, setIntroKind] = useState<'entrance' | 'finale' | null>(null);
   const [mode, setMode] = useState<VisitMode>('guided');
   const [time, setTime] = useState<TimeOfDay>('morning');
   const [activeEncounter, setActiveEncounter] = useState<EncounterId | null>(null);
@@ -91,7 +91,7 @@ export default function App() {
     setActiveEncounter(null);
     setHelp(false);
     setEntered(false);
-    setIntroOpen(false);
+    setIntroKind(null);
   };
 
   const selectTime = (next: TimeOfDay) => {
@@ -170,7 +170,7 @@ export default function App() {
   const selectMode = (newMode: VisitMode) => {
     setMode(newMode);
     setEntered(newMode === 'free');
-    setIntroOpen(newMode === 'guided');
+    setIntroKind(newMode === 'guided' ? 'entrance' : null);
     setReady(false);
     setError('');
     setPlace('elephant');
@@ -179,7 +179,7 @@ export default function App() {
     closeEncounter();
   };
   const completeIntro = () => {
-    setIntroOpen(false);
+    setIntroKind(null);
     setEntered(true);
     setReady(false);
   };
@@ -188,8 +188,25 @@ export default function App() {
     setMusicPlaying(false);
     setWalking(0);
     setActiveEncounter(null);
-    setIntroOpen(true);
+    setIntroKind('entrance');
     setEntered(false);
+  };
+  const startFinale = () => {
+    musicRef.current?.stop();
+    setMusicPlaying(false);
+    setActiveEncounter(null);
+    setWalking(0);
+    setIntroKind('finale');
+    setEntered(false);
+  };
+  const finishFinale = () => {
+    setIntroKind(null);
+    setEntered(false);
+  };
+  const backFromFinale = () => {
+    setIntroKind(null);
+    setEntered(true);
+    setReady(false);
   };
   const trigger = (type: 'gaze' | 'song') => {
     setActionType(type);
@@ -209,10 +226,12 @@ export default function App() {
     onLostPointerCapture: () => setWalking(0),
   });
 
-  if (introOpen) {
+  if (introKind) {
+    const ending = introKind === 'finale';
     return (
-      <Suspense fallback={<main className="elephant-intro elephant-loading" role="status"><span>水月洞天，正徐徐展开…</span><button className="elephant-skip" onClick={completeIntro}>直接入画 ↗</button></main>}>
-        <ElephantIntro time={time} onComplete={completeIntro} />
+      <Suspense fallback={<main className="elephant-intro elephant-loading" role="status"><span>水月洞天，正徐徐展开…</span><button className="elephant-skip" onClick={ending ? finishFinale : completeIntro}>{ending ? '回到卷首' : '直接入画'} ↗</button></main>}>
+        <ElephantIntro key={introKind} time={time} variant={introKind}
+          onComplete={ending ? finishFinale : completeIntro} onBack={ending ? backFromFinale : undefined} />
       </Suspense>
     );
   }
@@ -345,6 +364,8 @@ export default function App() {
             {place === 'glassbridge' && time === 'night' ? '♪ 对山歌' : '◌ 驻足赏景'}
           </button>
         </div>
+        {place === 'glassbridge' && <button type="button" className="scene-finale-link"
+          onClick={startFinale}>卷尾 · 回望象山题诗 ↗</button>}
       </section>
       <div className="scene-guide">拖动画卷，听风看山 <span aria-hidden="true">↔</span></div>
       <nav className="scene-landmarks" aria-label="画卷景点导航">

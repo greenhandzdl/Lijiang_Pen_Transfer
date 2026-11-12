@@ -30,3 +30,7 @@ npm run preview
 ## 下一阶段
 
 部署 Playwright screenshot 回归测试和 Lighthouse；本版尚未提供截图金标准和手机真实机型性能结论，不能编造这些测试结果。
+
+## 新增场景资源的自动化验证
+
+`npm run verify:assets` 在旧版无损高清画幅和五角色姿态上继续强制核对尺寸、VP8L 和最小体积；另外检查四张新增透明 NPC 精灵的尺寸/最大体积与 MP3 文件头和体积预算。Pages 发布后 `curl` 也对新增四个 WebP 路径和 `audio/night-river-original.mp3` 做实际在线下载验证。完整视觉、声画同步和移动设备实机听感仍需浏览器与真人验收。

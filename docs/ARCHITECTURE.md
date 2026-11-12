@@ -45,3 +45,9 @@ ScrollEngine.ts [Pixi Application + 世界坐标 + 相机 + 角色 + 水纹 + �
 夜间镜头/灯光/无人机/倒影节拍由独立数值参数控制；当前没有合法可用音频，`setAudioEnergy` 是预留 API，节拍模拟必须被明确称作「静音节奏预览」。制作正式版本需要独立 night-effects 模块和 Web Audio AnalyserNode。详见 `docs/INTERACTION_PLAN.md`。
 
 **已完成演示接口**：`src/engine/NightEffects.ts` 是独立的轻量矢量光效图层，支持 `{view, lights, rhythm, drones}` 与未来真实音频能量输入 `setAudioEnergy(0..1)`；`src/app/ScrollStage.tsx` 桥接状态，`App.tsx` 提供可访问选项。夜间纹理始终用原幅 `scene-night.webp`，特效不会修改图片文件。
+
+## 实际新增素材与音频链路（Demo 0.4）
+
+`src/content/encounters.ts` 的每个热点包含 `spriteFile / spriteWidth / worldX / worldY`。引擎加载原有无损背景和人物后即可进入场景；四张次要透明插画随后通过 `Promise.all(... Assets.load)` 异步加载，单张出错只保留可用热区，不产生黑屏。
+
+夜间独立音频控制器 `src/engine/NightMusic.ts` 在 React 用户真实点击后才创建 `AudioContext → MediaElementSource → AnalyserNode → destination`；`ScrollEngine.tick` 读取 `sampleEnergy()`，不通过 React 60FPS 更新状态。`NightEffects` 在 music=true 时取消程序化节拍、改用真实 FFT 值。停播/退出夜景清零能量，默认静音并尊重减少动画偏好。

@@ -44,3 +44,11 @@
 - 渔人/鸬鹚/鱼市的占位版本必须明确标注“脚本演示 / 待美术”；夜间无人机是概念预览，不能宣传为现实存在的无人机秀。
 - 没有授权歌曲时，夜间节拍效果只能标注“静音节奏预览”；真实歌曲→AnalyserNode→倒影联动是后续功能。
 - React 处理对话、按钮、选择；Pixi 处理图层、热点、水纹、视觉效果。夜间效果不修改原画像素。
+
+## 新增轻量场景素材与原创音频（2026-11-12）
+
+- 背景/用户角色 **必须保持** 原幅无损，与新增小型 NPC 的透明 WebP 有损压缩**分开管理**：参见 `docs/ASSETS.md`。
+- 新插画 `npc-fisher / npc-cormorant / npc-market / npc-nightboat` 是交互图层，用原画世界坐标展示，不要以它们替换整幅高清画。
+- 原创器乐 `night-river-original.mp3` 不是山歌录音。绝不将它标注为传统歌曲/非遗原声；用户点击才播放，离开夜景要停。
+- 真正音乐频谱由 `NightMusic.sampleEnergy` 提供给 Pixi `NightEffects`；不得把每帧音频能量写进 React State。
+- 新增资源大小、alpha、音频文件头在 `npm run verify:assets` 及 Pages `curl` smoke test 验证；新增资源需要标注体积预算。

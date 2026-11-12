@@ -289,3 +289,8 @@
 @media(prefers-reduced-motion:reduce){
   .home-gallery-image,.home-actions button,.time-switcher button,.scene-landmarks button{transition:none}
 }
+
+
+/* Keep the location label and story discoveries in separate visual rows. */
+.encounter-rail{top:188px}
+@media(max-width:700px){.encounter-rail{top:132px}}

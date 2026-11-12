@@ -39,6 +39,16 @@ jobs:
           name: lijiang-demo-dist
           path: dist
           retention-days: 14
+      - name: Check and configure Pages publishing mode
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Current Pages build mode:"
+          gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '{build_type: .build_type, source: .source}' || true
+          echo "Attempting GitHub Actions publishing (needs Pages + Administration write permissions):"
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow || true
+          echo "Pages build mode after attempt:"
+          gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '{build_type: .build_type, source: .source}' || true
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:

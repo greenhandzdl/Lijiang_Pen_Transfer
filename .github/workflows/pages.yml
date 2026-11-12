@@ -39,16 +39,10 @@ jobs:
           name: lijiang-demo-dist
           path: dist
           retention-days: 14
-      - name: Check and configure Pages publishing mode
+      - name: Show Pages publishing mode
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "Current Pages build mode:"
-          gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '{build_type: .build_type, source: .source}' || true
-          echo "Attempting GitHub Actions publishing (needs Pages + Administration write permissions):"
-          gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow || true
-          echo "Pages build mode after attempt:"
-          gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '{build_type: .build_type, source: .source}' || true
+        run: gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '{build_type: .build_type, source: .source}'
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
@@ -60,3 +54,25 @@ jobs:
       - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify deployed HTML and resources with curl
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Checking deployed site: ${PAGE_URL}"
+          curl --fail-with-body --location --retry 7 --retry-delay 5 --retry-all-errors \
+            --silent --show-error "${PAGE_URL}" -o /tmp/lijiang-page.html
+          if ! grep -q '/Lijiang_Pen_Transfer/assets/index-' /tmp/lijiang-page.html; then
+            echo "::error::HTML does not reference Vite compiled assets"
+            head -c 600 /tmp/lijiang-page.html
+            exit 1
+          fi
+          JS_PATH="$(grep -oE '/Lijiang_Pen_Transfer/assets/index-[^"]+\.js' /tmp/lijiang-page.html | head -1)"
+          echo "Checking JS: ${JS_PATH}"
+          curl --fail-with-body --location --retry 7 --retry-delay 5 --retry-all-errors \
+            --silent --show-error "https://greenhandzdl.github.io${JS_PATH}" -o /dev/null
+          echo "Checking landscape image"
+          curl --fail-with-body --location --retry 7 --retry-delay 5 --retry-all-errors \
+            --silent --show-error "${PAGE_URL%/}/art/lijiang-scene.webp" -o /dev/null
+          echo "HTTP smoke test passed"

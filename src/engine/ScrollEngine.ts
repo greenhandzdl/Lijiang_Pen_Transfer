@@ -331,7 +331,7 @@ export class ScrollEngine {
       }
       this.hero.x = this.heroX;
       if (this.mode === 'guided' && (direction !== 0 || this.autoDestination !== null)) {
-        const targetX = this.heroX - this.host.clientWidth / (this.zoom * 0.44);
+        const targetX = this.heroX - (this.host.clientWidth / this.zoom) * 0.44;
         this.cameraX += (targetX - this.cameraX) * Math.min(1, dt * 2.4);
         this.layout();
       }

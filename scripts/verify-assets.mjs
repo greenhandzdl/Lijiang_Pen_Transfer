@@ -71,3 +71,39 @@ for (const [filename, expectedWidth, expectedHeight, minBytes] of manifest) {
   }
 }
 if (!ok) process.exitCode = 1;
+/** New mini NPC overlays are intentionally small lossy-alpha WebP. Unlike the
+ * three full paintings and five hero poses, their display size is ~150px,
+ * so keeping 800px production sprites avoids blurry upscaling AND large payloads. */
+const overlayAssets = [
+  ['npc-fisher.webp', 780, 800, 214_360],
+  ['npc-cormorant.webp', 800, 716, 219_282],
+  ['npc-market.webp', 800, 763, 221_646],
+  ['npc-nightboat.webp', 800, 467, 142_916],
+];
+for (const [filename, expectedWidth, expectedHeight, expectedSize] of overlayAssets) {
+  try {
+    const bytes = readFileSync(new URL(`../public/art/${filename}`, import.meta.url));
+    const { width, height } = getDimensions(bytes);
+    const good = width === expectedWidth && height === expectedHeight &&
+      bytes.length >= 60_000 && bytes.length <= 260_000 &&
+      bytes.length === expectedSize;
+    if (!good) ok = false;
+    console.log(`${good ? 'OK' : 'FAIL'} ${filename}: ${width}x${height}, ${bytes.length.toLocaleString()} bytes (compact overlay)`);
+  } catch (error) {
+    ok = false;
+    console.error(`FAIL ${filename}: ${error.message}`);
+  }
+}
+
+try {
+  const bytes = readFileSync(new URL('../public/audio/night-river-original.mp3', import.meta.url));
+  const isMp3 = bytes.toString('ascii', 0, 3) === 'ID3' ||
+    (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0);
+  const good = isMp3 && bytes.length >= 70_000 && bytes.length <= 230_000;
+  if (!good) ok = false;
+  console.log(`${good ? 'OK' : 'FAIL'} night-river-original.mp3: ${bytes.length} bytes (original demo)`);
+} catch (error) {
+  ok = false;
+  console.error(`FAIL night music: ${error.message}`);
+}
+if (!ok) process.exitCode = 1;

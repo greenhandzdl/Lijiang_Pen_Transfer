@@ -72,9 +72,44 @@ try {
       emitScreenshot(path, variant.device + '_' + label);
       console.log('VISUAL_STATUS ' + variant.device + ' ' + label + ' slider=' + pos);
     }
+    const slider = page.getByRole('slider', { name: /拖动象鼻山序章进度/ });
+    const rect = await slider.boundingBox();
+    if (!rect) throw new Error('Timeline is not hit-testable');
+    const trackY = rect.y + rect.height / 2;
+    await page.mouse.move(rect.x + rect.width * 0.12, trackY);
+    await page.mouse.down();
+    await page.mouse.move(rect.x + rect.width * 0.77, trackY, { steps: 12 });
+    await page.mouse.up();
+    await pause(100);
+    const dragged = Number(await slider.inputValue());
+    if (dragged < 550 || dragged > 950) throw new Error('Pointer dragging failed: ' + dragged);
+    console.log('DRAG_POINTER_OK ' + variant.device + ' ' + dragged);
+
+    await slider.focus();
+    await slider.press('Home');
+    await slider.press('ArrowRight');
+    await pause(100);
+    const keyboard = Number(await slider.inputValue());
+    if (keyboard < 1 || keyboard > 30) throw new Error('Keyboard seeking failed: ' + keyboard);
+    console.log('DRAG_KEYBOARD_OK ' + variant.device + ' ' + keyboard);
+
     await page.getByRole('button', { name: /跳过序章/ }).click();
     await page.locator('.scroll-canvas').waitFor({ timeout: 30000 });
     console.log('PIXIJOURNEY_OK ' + variant.device);
+    if (variant.device === 'desktop') {
+      await page.locator('.scene-loading').waitFor({ state: 'hidden', timeout: 30000 });
+      await page.getByRole('button', { name: /玻璃桥/ }).click();
+      await page.locator('.scene-finale-link').click();
+      await page.locator('canvas.elephant-canvas').waitFor({ timeout: 20000 });
+      await page.getByRole('button', { name: '题诗', exact: true }).click();
+      await pause(250);
+      const path = 'visual-qa/desktop-卷尾.jpg';
+      await page.screenshot({ path, type: 'jpeg', quality: 45 });
+      emitScreenshot(path, 'desktop_卷尾');
+      await page.getByRole('button', { name: '返回画卷' }).click();
+      await page.locator('.scroll-canvas').waitFor({ timeout: 30000 });
+      console.log('FINALE_RETURN_OK');
+    }
     if (pageErrors.length) console.warn('BROWSER_WARNINGS ' + JSON.stringify(pageErrors.slice(0, 12)));
     await context.close();
   }

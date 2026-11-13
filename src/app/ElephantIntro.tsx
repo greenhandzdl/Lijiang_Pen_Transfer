@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { ElephantIntroScene, IntroBeat, IntroSequence } from '../engine/ElephantIntroScene';
 import { artworkForTime, type TimeOfDay } from '../content/places';
 
@@ -135,28 +135,47 @@ export default function ElephantIntro({ onComplete, time, variant = 'entrance', 
     engineRef.current?.setPlaying(false);
     setPlaying(false);
   };
-  const progressAtPointer = (event: ReactPointerEvent<HTMLInputElement>) => {
+  const progressAtPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
     return (event.clientX - bounds.left) / Math.max(1, bounds.width);
   };
   // Capturing the pointer on the entire track makes drag-to-seek work even
   // when the press begins away from the native slider thumb.
-  const onScrubPointerDown = (event: ReactPointerEvent<HTMLInputElement>) => {
+  const onScrubPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     startDragging();
     event.currentTarget.setPointerCapture(event.pointerId);
     seek(progressAtPointer(event));
   };
-  const onScrubPointerMove = (event: ReactPointerEvent<HTMLInputElement>) => {
+  const onScrubPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       seek(progressAtPointer(event));
     }
   };
-  const onScrubPointerUp = (event: ReactPointerEvent<HTMLInputElement>) => {
+  const onScrubPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       seek(progressAtPointer(event));
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     endDragging();
+  };
+  const onScrubKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const change = event.shiftKey ? 0.05 : 0.01;
+    let next = progressRef.current;
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowDown': next -= change; break;
+      case 'ArrowRight':
+      case 'ArrowUp': next += change; break;
+      case 'PageDown': next -= 0.1; break;
+      case 'PageUp': next += 0.1; break;
+      case 'Home': next = 0; break;
+      case 'End': next = 1; break;
+      default: return;
+    }
+    event.preventDefault();
+    engineRef.current?.setPlaying(false);
+    setPlaying(false);
+    seek(next);
   };
   const endDragging = () => {
     const resume = resumeAfterDrag.current && progressRef.current < 0.999;
@@ -220,17 +239,19 @@ export default function ElephantIntro({ onComplete, time, variant = 'entrance', 
             aria-label={playing ? '暂停三维镜头' : atEnd ? '重播三维镜头' : '播放三维镜头'}>
             {playing ? 'Ⅱ' : atEnd ? '↺' : '▶'}
           </button>
-          <input type="range" min="0" max="1000" step="1"
-            value={Math.round(progress * 1000)}
+          <div role="slider" tabIndex={error || reducedMotion ? -1 : 0}
+            className="elephant-timeline-track"
+            aria-disabled={Boolean(error) || reducedMotion}
+            aria-valuemin={0} aria-valuemax={1000}
+            aria-valuenow={Math.round(progress * 1000)}
             aria-label={variant === 'finale' ? '拖动卷尾镜头进度' : '拖动象鼻山序章进度'}
             aria-valuetext={clock(progress * duration) + ' / ' + clock(duration)}
-            onPointerDown={onScrubPointerDown}
+            onPointerDown={error || reducedMotion ? undefined : onScrubPointerDown}
             onPointerMove={onScrubPointerMove}
             onPointerUp={onScrubPointerUp}
             onPointerCancel={endDragging}
             onLostPointerCapture={endDragging}
-            onChange={(event) => seek(Number(event.target.value) / 1000)}
-            disabled={Boolean(error) || reducedMotion}
+            onKeyDown={onScrubKeyDown}
             style={{ '--intro-progress': String(progress * 100) + '%' } as CSSProperties} />
           <time className="elephant-timecode">{clock(progress * duration)} / {clock(duration)}</time>
         </div>

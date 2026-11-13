@@ -86,16 +86,16 @@ function addMountain(scene: THREE.Scene) {
     new THREE.MeshStandardMaterial({ color: '#608d85', roughness: 1, flatShading: true }),
   ];
   // Sparse exposed limestone shards. Do not block the water-moon aperture.
-  for (let i = 0; i < 64; i++) {
+  for (let i = 0; i < 55; i++) {
     const x = -6.25 + random() * 12.1;
     const y = 0.55 + random() * 5.6;
     const nearHole = ((x + 3.42) / 2.15) ** 2 + ((y - 1.62) / 2.45) ** 2 < 1;
     if (nearHole || (x < -5.8 && y > 3.5) || (x > 4.5 && y > 4.4)) continue;
     const wedge = addMesh(
-      mountain, new THREE.IcosahedronGeometry(0.32 + random() * 0.66, 0),
+      mountain, new THREE.IcosahedronGeometry(0.27 + random() * 0.43, 0),
       tonalStones[i % tonalStones.length], x, y, 2.53 + random() * 0.14,
     );
-    wedge.scale.set(0.46 + random() * 0.45, 0.85 + random() * 1.5, 0.16);
+    wedge.scale.set(0.52 + random() * 0.44, 0.8 + random() * 0.9, 0.16);
     wedge.rotation.z = (random() - 0.5) * 0.7;
   }
 
@@ -345,18 +345,18 @@ type CameraStop = {
 const ENTRANCE_CAMERA: readonly CameraStop[] = [
   // Keep cameras on the river-facing side of the rock. A near 90-degree
   // side orbit exposed the 4.4-unit extrusion and the end of the set.
-  { progress: 0, eye: [-8.6, 6.7, 25.4], focus: [-2.35, 3, 0], frameWidth: 17.5 },
-  { progress: 0.25, eye: [3.6, 6.2, 26], focus: [-2.3, 2.7, 0.5], frameWidth: 17 },
-  { progress: 0.49, eye: [4.2, 4.6, 23], focus: [-3.2, 1.6, 0.5], frameWidth: 10.5 },
-  { progress: 0.66, eye: [7.8, 5.7, 26], focus: [-0.4, 2.5, 4.5], frameWidth: 17 },
-  { progress: 0.87, eye: [9, 5.5, 27], focus: [1.6, 2.2, 5.4], frameWidth: 17 },
-  { progress: 1, eye: [6.2, 5.8, 28], focus: [1.8, 2.25, 5.2], frameWidth: 17 },
+  { progress: 0, eye: [-8.6, 7.0, 30], focus: [-2.35, 3, 0], frameWidth: 18.2 },
+  { progress: 0.25, eye: [3.6, 6.5, 30], focus: [-2.3, 2.7, 0.5], frameWidth: 18 },
+  { progress: 0.49, eye: [4.2, 4.9, 26], focus: [-3.2, 1.6, 0.5], frameWidth: 12 },
+  { progress: 0.66, eye: [7.8, 5.9, 31], focus: [-0.4, 2.5, 4.5], frameWidth: 18 },
+  { progress: 0.87, eye: [9, 5.9, 32], focus: [1.6, 2.4, 5.4], frameWidth: 18 },
+  { progress: 1, eye: [6.2, 6.1, 33], focus: [1.8, 2.45, 5.2], frameWidth: 18 },
 ];
 
 const FINALE_CAMERA: readonly CameraStop[] = [
-  { progress: 0, eye: [8.0, 6.3, 29], focus: [-1.6, 2.8, 0], frameWidth: 17.8 },
-  { progress: 0.6, eye: [3.5, 5.9, 28], focus: [-2.1, 2.8, 0], frameWidth: 17.8 },
-  { progress: 1, eye: [2.7, 5.9, 28], focus: [-2.0, 2.8, 0], frameWidth: 17.8 },
+  { progress: 0, eye: [8.0, 6.7, 33], focus: [-1.6, 2.8, 0], frameWidth: 18.5 },
+  { progress: 0.6, eye: [3.5, 6.2, 32], focus: [-2.1, 2.8, 0], frameWidth: 18.5 },
+  { progress: 1, eye: [2.7, 6.2, 32], focus: [-2.0, 2.8, 0], frameWidth: 18.5 },
 ];
 
 function interpolateCamera(stops: readonly CameraStop[], progress: number) {
@@ -551,9 +551,9 @@ export class ElephantIntroScene {
       Math.sin(t * 2.5) * 0.015,
     );
 
-    const stepOffBoat = smooth((p - 0.83) / 0.055);
-    const stepUpOne = smooth((p - 0.885) / 0.052);
-    const stepUpTwo = smooth((p - 0.937) / 0.055);
+    const stepOffBoat = smooth((p - 0.78) / 0.055);
+    const stepUpOne = smooth((p - 0.835) / 0.050);
+    const stepUpTwo = smooth((p - 0.885) / 0.040);
     const aboard = new THREE.Vector3(pos.x, pos.y + 0.28, pos.z - 0.35);
     this.figure.position.copy(aboard)
       .lerp(new THREE.Vector3(4.28, 0.22, 10.08), stepOffBoat)

@@ -13,6 +13,7 @@ export const INTRO_SECONDS = 15.2;
 type Callbacks = {
   onBeat: (beat: IntroBeat) => void;
   onComplete: () => void;
+  onProgress: (progress: number) => void;
 };
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -125,13 +126,8 @@ function addMountain(scene: THREE.Scene) {
     mountain.add(foliage);
   }
 
-  // Thin eye-rock trace (symbolic), kept distinct from Shuiyue Cave.
-  const eyeStone = addMesh(
-    mountain, new THREE.TorusGeometry(0.47, 0.08, 6, 18),
-    tonalStones[0], 0.85, 5.35, 2.18,
-  );
-  eyeStone.scale.y = 0.45;
-  eyeStone.rotation.z = -0.2;
+  // No painted-on circular 'eye': from an oblique camera angle it looked
+  // like a floating torus rather than natural limestone.
   return mountain;
 }
 
@@ -158,21 +154,29 @@ function addDistance(scene: THREE.Scene) {
 }
 
 function addRiver(scene: THREE.Scene, time: TimeOfDay) {
-  const surface = new THREE.PlaneGeometry(180, 180, 1, 1);
+  const surface = new THREE.PlaneGeometry(240, 240, 1, 1);
   surface.rotateX(-Math.PI / 2);
   const water = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uTone: { value: time === 'night' ? 2 : time === 'dusk' ? 1 : 0 } },
+    uniforms: {
+      uTime: { value: 0 },
+      uTone: { value: time === 'night' ? 2 : time === 'dusk' ? 1 : 0 },
+      uFogColor: { value: new THREE.Color(time === 'night' ? '#263d50' : time === 'dusk' ? '#c5b5a5' : '#c6d1c6') },
+    },
     vertexShader: String.raw`
       varying vec3 vPoint;
+      varying vec3 vWorld;
       void main() {
         vPoint = position;
+        vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
     fragmentShader: String.raw`
       uniform float uTime;
       uniform float uTone;
+      uniform vec3 uFogColor;
       varying vec3 vPoint;
+      varying vec3 vWorld;
       void main() {
         float ripple = sin(vPoint.x * 1.2 + vPoint.z * 0.45 + uTime * 0.8)
                      * sin(vPoint.z * 1.35 - uTime * 0.55);
@@ -183,6 +187,10 @@ function addRiver(scene: THREE.Scene, time: TimeOfDay) {
         vec3 color = mix(darkWater, brightWater, light * 0.65);
         color = mix(color, vec3(0.58, 0.46, 0.34), step(0.5, uTone) * (1.0 - step(1.5, uTone)) * 0.27);
         color = mix(color, vec3(0.10, 0.22, 0.29) + light * 0.10, step(1.5, uTone) * 0.78);
+        // Blend with distant atmospheric haze before the plane's edge is
+        // visible: the old flat rectangular water horizon exposed the set.
+        float distanceToEye = length(vWorld - cameraPosition);
+        color = mix(color, uFogColor, smoothstep(44.0, 105.0, distanceToEye));
         gl_FragColor = vec4(color, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -283,9 +291,50 @@ function addFigure(scene: THREE.Scene, assetRoot: string) {
   return traveler;
 }
 
+/**
+ * All poses are pure functions of a normalized timeline. This makes seeking
+ * backwards just as safe as letting the sequence play forwards.
+ */
+type CameraStop = {
+  progress: number;
+  eye: [number, number, number];
+  focus: [number, number, number];
+  frameWidth: number;
+};
+
+const ENTRANCE_CAMERA: readonly CameraStop[] = [
+  // Keep cameras on the river-facing side of the rock. A near 90-degree
+  // side orbit exposed the 4.4-unit extrusion and the end of the set.
+  { progress: 0, eye: [-8.6, 6.7, 25.4], focus: [-2.35, 3, 0], frameWidth: 17.5 },
+  { progress: 0.25, eye: [3.6, 6.2, 26], focus: [-2.3, 2.7, 0.5], frameWidth: 17 },
+  { progress: 0.49, eye: [4.2, 4.6, 23], focus: [-3.2, 1.6, 0.5], frameWidth: 10.5 },
+  { progress: 0.66, eye: [7.8, 4.9, 22], focus: [-0.4, 1.6, 5.4], frameWidth: 15 },
+  { progress: 0.87, eye: [9.1, 3.8, 18.6], focus: [3.4, 1.1, 9], frameWidth: 10.5 },
+  { progress: 1, eye: [8.2, 3.8, 18.4], focus: [4.6, 1.2, 9.5], frameWidth: 10 },
+];
+
+const FINALE_CAMERA: readonly CameraStop[] = [
+  { progress: 0, eye: [8.0, 6.3, 29], focus: [-1.6, 2.8, 0], frameWidth: 17.8 },
+  { progress: 0.6, eye: [3.5, 5.9, 28], focus: [-2.1, 2.8, 0], frameWidth: 17.8 },
+  { progress: 1, eye: [2.7, 5.9, 28], focus: [-2.0, 2.8, 0], frameWidth: 17.8 },
+];
+
+function interpolateCamera(stops: readonly CameraStop[], progress: number) {
+  const index = Math.max(0, stops.findIndex((stop, i) =>
+    i < stops.length - 1 && progress <= stops[i + 1].progress));
+  const start = stops[index];
+  const end = stops[Math.min(stops.length - 1, index + 1)];
+  const alpha = smooth((progress - start.progress) / Math.max(0.0001, end.progress - start.progress));
+  return {
+    eye: new THREE.Vector3(...start.eye).lerp(new THREE.Vector3(...end.eye), alpha),
+    focus: new THREE.Vector3(...start.focus).lerp(new THREE.Vector3(...end.focus), alpha),
+    frameWidth: lerp(start.frameWidth, end.frameWidth, alpha),
+  };
+}
+
 export class ElephantIntroScene {
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(42, 1, 0.1, 180);
+  private readonly camera = new THREE.PerspectiveCamera(33, 1, 0.45, 180);
   private readonly renderer: THREE.WebGLRenderer;
   private readonly boat: THREE.Group;
   private readonly figure: THREE.Group;
@@ -296,8 +345,12 @@ export class ElephantIntroScene {
   private readonly reducedMotion: boolean;
   private readonly container: HTMLElement;
   private readonly resizeObserver: ResizeObserver;
-  private readonly start = performance.now();
+  private readonly durationMs: number;
   private frame = 0;
+  private elapsedMs = 0;
+  private lastNow: number | null = null;
+  private lastReport = -1;
+  private playing = true;
   private lastBeat: IntroBeat | null = null;
   private disposed = false;
   private finished = false;
@@ -306,6 +359,7 @@ export class ElephantIntroScene {
     this.container = container;
     this.callbacks = callbacks;
     this.sequence = sequence;
+    this.durationMs = (sequence === 'finale' ? 9 : INTRO_SECONDS) * 1000;
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const small = window.innerWidth < 720;
     this.renderer = new THREE.WebGLRenderer({
@@ -314,14 +368,14 @@ export class ElephantIntroScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.35 : 1.8));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.3;
+    this.renderer.toneMappingExposure = 1.23;
     this.renderer.domElement.setAttribute('aria-hidden', 'true');
     this.renderer.domElement.className = 'elephant-canvas';
     container.appendChild(this.renderer.domElement);
     const night = time === 'night';
     const dusk = time === 'dusk';
     this.scene.background = new THREE.Color(night ? '#203746' : dusk ? '#dcb99a' : '#dfdec9');
-    this.scene.fog = new THREE.Fog(night ? '#263d50' : dusk ? '#c5b5a5' : '#c6d1c6', 25, 78);
+    this.scene.fog = new THREE.Fog(night ? '#263d50' : dusk ? '#c5b5a5' : '#c6d1c6', 35, 112);
     this.scene.add(new THREE.HemisphereLight(night ? '#8da6ca' : '#fff8e4', '#738d82', night ? 0.85 : 2.0));
     const light = new THREE.DirectionalLight(night ? '#b6c8e5' : dusk ? '#f8c88d' : '#fff0cb', night ? 0.75 : dusk ? 2.0 : 2.4);
     light.position.set(-12, 18, 16);
@@ -357,13 +411,48 @@ export class ElephantIntroScene {
       new THREE.Vector3(-3.4, 0.17, 0),
       new THREE.Vector3(-3.35, 0.17, 3.5),
       new THREE.Vector3(-2.4, 0.17, 6.6),
-      new THREE.Vector3(0.0, 0.17, 9.1),
-      new THREE.Vector3(3.1, 0.17, 10.0),
+      new THREE.Vector3(0, 0.17, 9.1),
+      new THREE.Vector3(3.1, 0.17, 10),
     ], false, 'centripetal');
+
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
+    if (this.reducedMotion) {
+      // A held title card, rather than a moving camera, for finale.
+      this.elapsedMs = this.sequence === 'finale' ? this.durationMs : 0;
+      this.playing = false;
+    }
+    this.renderAt(this.getProgress());
     this.frame = requestAnimationFrame(this.animate);
+  }
+
+  getProgress() {
+    return clamp01(this.elapsedMs / this.durationMs);
+  }
+
+  getPlaying() {
+    return this.playing;
+  }
+
+  setPlaying(value: boolean) {
+    if (this.disposed || this.reducedMotion) return;
+    if (value && this.elapsedMs >= this.durationMs) {
+      this.elapsedMs = 0;
+      this.finished = false;
+    }
+    this.playing = value;
+    this.lastNow = null;
+    this.renderAt(this.getProgress());
+  }
+
+  /** Called for pointer, touch and keyboard scrubbing; never advances a frame. */
+  seek(progress: number) {
+    if (this.disposed) return;
+    this.elapsedMs = clamp01(Number.isFinite(progress) ? progress : 0) * this.durationMs;
+    if (this.elapsedMs >= this.durationMs) this.playing = false;
+    this.lastNow = null;
+    this.renderAt(this.getProgress(), true);
   }
 
   private resize() {
@@ -371,90 +460,93 @@ export class ElephantIntroScene {
     const width = Math.max(1, this.container.clientWidth);
     const height = Math.max(1, this.container.clientHeight);
     this.camera.aspect = width / height;
-    // Wider framing on narrow devices, rather than cropping away the cave.
-    this.camera.fov = width < height ? 58 : 42;
+    // Fixed cinematic lens, even in portrait. Fit by moving the camera back,
+    // never by widening to 58 degrees and revealing the stage edge.
+    this.camera.fov = width < height ? 34 : 33;
     this.camera.updateProjectionMatrix();
+    const narrow = width < 720;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, narrow ? 1.3 : 1.8));
     this.renderer.setSize(width, height, false);
+    this.renderAt(this.getProgress(), true);
   }
 
-  private animate = (now: number) => {
+  private frameCamera(progress: number) {
+    const stops = this.sequence === 'finale' ? FINALE_CAMERA : ENTRANCE_CAMERA;
+    const { eye, focus, frameWidth } = interpolateCamera(stops, progress);
+    const angle = THREE.MathUtils.degToRad(this.camera.fov * 0.5);
+    const neededForWidth = (frameWidth * 1.05) / (2 * Math.tan(angle) * this.camera.aspect);
+    const distance = Math.max(22, eye.distanceTo(focus), neededForWidth);
+    this.camera.position.copy(focus).add(eye.sub(focus).normalize().multiplyScalar(distance));
+    this.camera.lookAt(focus);
+  }
+
+  private renderAt(progress: number, forceReport = false) {
     if (this.disposed) return;
-    const duration = this.sequence === 'finale' ? 9000 : INTRO_SECONDS * 1000;
-    const p = this.reducedMotion ? 1 : clamp01((now - this.start) / duration);
+    const p = clamp01(progress);
     const beat: IntroBeat = this.sequence === 'finale'
       ? (p < 0.58 ? 'orbit' : 'poem')
       : p < 0.27 ? 'orbit' : p < 0.58 ? 'cave' : p < 0.85 ? 'dock' : 'poem';
+
     if (beat !== this.lastBeat) {
       this.lastBeat = beat;
       this.callbacks.onBeat(beat);
     }
-
-    // 1. Establish the silhouette with an intentional, wide clockwise orbit.
-    const orbit = smooth(p / 0.3);
-    const theta = lerp(-1.55, 0.17, orbit);
-    const orbitEye = new THREE.Vector3(
-      Math.sin(theta) * 21, lerp(7.8, 5.45, orbit), Math.cos(theta) * 21,
-    );
-    const caveEye = new THREE.Vector3(3.3, 5.3, 19);
-    const dockEye = new THREE.Vector3(10.8, 5.2, 17.2);
-    const caveToDock = smooth((p - 0.57) / 0.27);
-    const fromOrbit = smooth((p - 0.25) / 0.12);
-    this.camera.position.copy(orbitEye).lerp(caveEye, fromOrbit).lerp(dockEye, caveToDock);
-
-    const look = new THREE.Vector3(-0.8, 2.8, 0);
-    look.lerp(new THREE.Vector3(-2.5, 2.1, 0.5), fromOrbit);
-    look.lerp(new THREE.Vector3(2.5, 1.45, 6.7), caveToDock);
-    if (p > 0.84) {
-      const settle = smooth((p - 0.84) / 0.13);
-      this.camera.position.lerp(new THREE.Vector3(8.5, 4.45, 14), settle);
-      look.lerp(new THREE.Vector3(3.4, 1.45, 9), settle);
+    if (forceReport || Math.abs(p - this.lastReport) > 0.012 || p === 1) {
+      this.lastReport = p;
+      this.callbacks.onProgress(p);
     }
-    this.camera.lookAt(look);
+    this.frameCamera(p);
 
-    // 2. The boat is visible behind the arch, crosses its real opening,
-    // and follows an easing curve to the pier.
-    const travel = smooth((p - 0.24) / 0.55);
-    const pos = this.route.getPoint(Math.max(0.001, Math.min(0.999, travel)));
-    const tangent = this.route.getTangent(Math.max(0.001, Math.min(0.999, travel)));
+    const t = this.elapsedMs / 1000;
+    const travel = smooth((p - 0.23) / 0.58);
+    const along = Math.max(0.001, Math.min(0.999, travel));
+    const pos = this.route.getPoint(along);
+    const tangent = this.route.getTangent(along);
     this.boat.position.copy(pos);
-    this.boat.position.y += Math.sin(now * 0.0027) * 0.035;
+    this.boat.position.y += Math.sin(t * 2.7) * 0.022;
     this.boat.rotation.set(
-      Math.sin(now * 0.0021) * 0.018,
+      Math.sin(t * 2.1) * 0.014,
       Math.atan2(tangent.x, tangent.z),
-      Math.sin(now * 0.0025) * 0.028,
+      Math.sin(t * 2.5) * 0.015,
     );
 
-    // 3. A traveler steps from the boat onto the waterside stairs.
-    const disembark = smooth((p - 0.79) / 0.12);
+    const disembark = smooth((p - 0.83) / 0.14);
     const aboard = new THREE.Vector3(pos.x, pos.y + 0.34, pos.z - 0.35);
     const ashore = new THREE.Vector3(5.55, 0.70, 10.35);
     this.figure.position.copy(aboard).lerp(ashore, disembark);
-    this.figure.position.y += Math.sin(now * 0.004) * 0.025 * (1 - disembark);
+    this.figure.position.y += Math.sin(t * 4) * 0.02 * (1 - disembark);
     this.figure.visible = p > 0.34;
     const portrait = this.figure.children.find((child): child is THREE.Sprite => child instanceof THREE.Sprite);
-    if (portrait) portrait.material.opacity = Math.min(1, (p - 0.34) * 14);
+    if (portrait) portrait.material.opacity = clamp01((p - 0.34) * 14);
+
     if (this.sequence === 'finale') {
-      const orbitEnd = smooth(p / 0.85);
-      const angle = lerp(0.75, 0.12, orbitEnd);
-      this.camera.position.set(Math.sin(angle) * 21, lerp(7.0, 5.3, orbitEnd), Math.cos(angle) * 21);
-      this.camera.lookAt(-0.6, 2.7, 0.2);
-      this.boat.position.set(3.1, 0.19, 10.0);
+      this.boat.position.set(3.1, 0.19, 10);
       this.boat.rotation.set(0, 0.68, 0);
       this.figure.position.set(5.55, 0.70, 10.35);
       this.figure.visible = true;
       if (portrait) portrait.material.opacity = 1;
     }
-    this.water.uniforms.uTime.value = this.reducedMotion ? 0 : now / 1000;
-    this.renderer.render(this.scene, this.camera);
 
-    if (p >= 1 && this.sequence === 'entrance') {
-      if (!this.finished) {
-        this.finished = true;
-        this.callbacks.onComplete();
+    this.water.uniforms.uTime.value = this.reducedMotion ? 0 : t;
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  private animate = (now: number) => {
+    if (this.disposed) return;
+    const delta = this.lastNow === null ? 0 : Math.max(0, Math.min(90, now - this.lastNow));
+    this.lastNow = now;
+    if (this.playing && !this.reducedMotion) {
+      this.elapsedMs = Math.min(this.durationMs, this.elapsedMs + delta);
+      this.renderAt(this.getProgress());
+      if (this.elapsedMs >= this.durationMs) {
+        this.playing = false;
+        if (this.sequence === 'entrance' && !this.finished) {
+          this.finished = true;
+          this.callbacks.onComplete();
+        }
       }
-      return;
     }
-    if (!this.reducedMotion) this.frame = requestAnimationFrame(this.animate);
+    this.frame = requestAnimationFrame(this.animate);
   };
 
   dispose() {

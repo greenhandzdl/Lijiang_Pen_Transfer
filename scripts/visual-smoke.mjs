@@ -66,7 +66,7 @@ try {
       await pause(230);
       const slider = page.getByRole('slider', { name: /拖动象鼻山序章进度/ });
       if (!(await slider.isVisible())) throw new Error('Missing draggable timeline');
-      const pos = await slider.getAttribute('value');
+      const pos = await slider.getAttribute('aria-valuenow');
       const path = 'visual-qa/' + variant.device + '-' + label + '.jpg';
       await page.screenshot({ path, type: 'jpeg', quality: 43 });
       emitScreenshot(path, variant.device + '_' + label);
@@ -81,7 +81,7 @@ try {
     await page.mouse.move(rect.x + rect.width * 0.77, trackY, { steps: 12 });
     await page.mouse.up();
     await pause(100);
-    const dragged = Number(await slider.inputValue());
+    const dragged = Number(await slider.getAttribute('aria-valuenow'));
     if (dragged < 550 || dragged > 950) throw new Error('Pointer dragging failed: ' + dragged);
     console.log('DRAG_POINTER_OK ' + variant.device + ' ' + dragged);
 
@@ -89,7 +89,7 @@ try {
     await slider.press('Home');
     await slider.press('ArrowRight');
     await pause(100);
-    const keyboard = Number(await slider.inputValue());
+    const keyboard = Number(await slider.getAttribute('aria-valuenow'));
     if (keyboard < 1 || keyboard > 30) throw new Error('Keyboard seeking failed: ' + keyboard);
     console.log('DRAG_KEYBOARD_OK ' + variant.device + ' ' + keyboard);
 

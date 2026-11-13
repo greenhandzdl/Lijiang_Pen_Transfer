@@ -70,7 +70,7 @@ function addMountain(scene: THREE.Scene) {
   const mountain = new THREE.Group();
   scene.add(mountain);
   const stone = new THREE.MeshStandardMaterial({
-    color: '#a8b29e', roughness: 1, flatShading: true, side: THREE.DoubleSide,
+    color: '#859f96', roughness: 1, flatShading: true, side: THREE.DoubleSide,
   });
   const bodyGeometry = new THREE.ExtrudeGeometry(rockOutline(), {
     depth: 4.4, bevelEnabled: true, bevelThickness: 0.2,
@@ -81,43 +81,43 @@ function addMountain(scene: THREE.Scene) {
 
   const random = randomSequence(190);
   const tonalStones = [
-    new THREE.MeshStandardMaterial({ color: '#879687', roughness: 1, flatShading: true }),
-    new THREE.MeshStandardMaterial({ color: '#c1bda4', roughness: 1, flatShading: true }),
-    new THREE.MeshStandardMaterial({ color: '#788d83', roughness: 1, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: '#587e72', roughness: 1, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: '#d2c5a4', roughness: 1, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: '#608d85', roughness: 1, flatShading: true }),
   ];
   // Sparse exposed limestone shards. Do not block the water-moon aperture.
-  for (let i = 0; i < 34; i++) {
+  for (let i = 0; i < 64; i++) {
     const x = -6.25 + random() * 12.1;
     const y = 0.55 + random() * 5.6;
     const nearHole = ((x + 3.42) / 2.15) ** 2 + ((y - 1.62) / 2.45) ** 2 < 1;
     if (nearHole || (x < -5.8 && y > 3.5) || (x > 4.5 && y > 4.4)) continue;
     const wedge = addMesh(
-      mountain, new THREE.IcosahedronGeometry(0.28 + random() * 0.45, 0),
-      tonalStones[i % tonalStones.length], x, y, 2.05 + random() * 0.14,
+      mountain, new THREE.IcosahedronGeometry(0.32 + random() * 0.66, 0),
+      tonalStones[i % tonalStones.length], x, y, 2.53 + random() * 0.14,
     );
-    wedge.scale.set(0.65 + random(), 0.3 + random() * 0.9, 0.12);
+    wedge.scale.set(0.46 + random() * 0.45, 0.85 + random() * 1.5, 0.16);
     wedge.rotation.z = (random() - 0.5) * 0.7;
   }
 
   // Restrained green crown; instance reuse keeps mobile draw calls low.
   const leavesGeometry = new THREE.IcosahedronGeometry(1, 1);
-  const shades = ['#506e55', '#67835e', '#78966e'];
+  const shades = ['#326956', '#527e61', '#7e9d72'];
   const caps = [5.9, 6.9, 7.75, 8.25, 8.45, 8.1, 8.35, 7.5, 6.7];
   for (let shade = 0; shade < shades.length; shade++) {
     const foliage = new THREE.InstancedMesh(
       leavesGeometry,
       new THREE.MeshStandardMaterial({ color: shades[shade], flatShading: true, roughness: 1 }),
-      30,
+      88,
     );
     const dummy = new THREE.Object3D();
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 88; i++) {
       const x = -5.6 + random() * 11.0;
       const part = Math.min(7, Math.floor(((x + 5.6) / 11) * 8));
       const fraction = ((x + 5.6) / 11) * 8 - part;
       const summit = lerp(caps[part], caps[part + 1], fraction);
-      dummy.position.set(x, summit - 0.22 + random() * 0.75, -2.15 + random() * 4.45);
-      const radius = 0.37 + random() * 0.63;
-      dummy.scale.set(radius * 1.15, radius * (0.75 + random() * 0.4), radius);
+      dummy.position.set(x, summit - 0.9 + random() * 1.3, 2.05 + random() * 0.9);
+      const radius = 0.19 + random() * 0.36;
+      dummy.scale.set(radius * (1.1 + random() * 0.6), radius * (0.8 + random() * 0.7), radius * 0.9);
       dummy.rotation.set(0, random() * 6, 0);
       dummy.updateMatrix();
       foliage.setMatrixAt(i, dummy.matrix);
@@ -126,8 +126,34 @@ function addMountain(scene: THREE.Scene) {
     mountain.add(foliage);
   }
 
-  // No painted-on circular 'eye': from an oblique camera angle it looked
-  // like a floating torus rather than natural limestone.
+  // Layered limestone bands: the earlier chips were z-fighting INSIDE the
+  // front cap, leaving one giant blank slab. These front-facing tapered
+  // strokes are embedded into the visible surface, but remain lightweight.
+  const veinColors = ['#e6d8b6', '#d1d4b6', '#477f7f', '#699d8d'];
+  const veins = veinColors.map((color) => new THREE.MeshBasicMaterial({
+    color, transparent: true, opacity: 0.58, depthWrite: false,
+    side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1,
+  }));
+  for (let i = 0; i < 92; i++) {
+    const x = -6.1 + random() * 12.1;
+    const section = Math.min(7, Math.floor(((x + 5.6) / 11) * 8));
+    const cap = lerp(caps[Math.max(0,section)], caps[Math.max(0,section) + 1], 0.5);
+    const y = 0.65 + random() * 7.3;
+    const insideHole = ((x + 3.42) / 2.05) ** 2 + ((y - 1.62) / 2.4) ** 2 < 1;
+    if (insideHole || y > cap - 0.55) continue;
+    const height = 0.65 + random() * 1.85;
+    const width = 0.11 + random() * 0.26;
+    const shape = new THREE.Shape();
+    shape.moveTo(-width * 0.35, -height * 0.5);
+    shape.lineTo(width * 0.32, -height * 0.44);
+    shape.lineTo(width * 0.55, height * 0.15);
+    shape.lineTo(-width * 0.15, height * 0.52);
+    shape.closePath();
+    const stripe = addMesh(mountain, new THREE.ShapeGeometry(shape),
+      veins[i % veins.length], x, y, 2.50 + random() * 0.025);
+    stripe.rotation.z = -0.22 + random() * 0.43;
+  }
+  // No painted-on circular 'eye': the old torus looked like a floating prop.
   return mountain;
 }
 
@@ -160,7 +186,7 @@ function addRiver(scene: THREE.Scene, time: TimeOfDay) {
     uniforms: {
       uTime: { value: 0 },
       uTone: { value: time === 'night' ? 2 : time === 'dusk' ? 1 : 0 },
-      uFogColor: { value: new THREE.Color(time === 'night' ? '#263d50' : time === 'dusk' ? '#c5b5a5' : '#c6d1c6') },
+      uFogColor: { value: new THREE.Color(time === 'night' ? '#263d50' : time === 'dusk' ? '#c5b5a5' : '#bfd7cc') },
     },
     vertexShader: String.raw`
       varying vec3 vPoint;
@@ -180,10 +206,10 @@ function addRiver(scene: THREE.Scene, time: TimeOfDay) {
       void main() {
         float ripple = sin(vPoint.x * 1.2 + vPoint.z * 0.45 + uTime * 0.8)
                      * sin(vPoint.z * 1.35 - uTime * 0.55);
-        float fine = sin(vPoint.z * 7.0 + vPoint.x * 2.6 + uTime * 1.9);
+        float fine = sin(vPoint.z * 2.8 + vPoint.x * 0.8 + uTime * 0.95);
         float light = smoothstep(0.64, 1.0, ripple * 0.25 + fine * 0.15 + 0.70);
-        vec3 darkWater = vec3(0.34, 0.52, 0.47);
-        vec3 brightWater = vec3(0.63, 0.74, 0.65);
+        vec3 darkWater = vec3(0.14, 0.39, 0.39);
+        vec3 brightWater = vec3(0.36, 0.64, 0.56);
         vec3 color = mix(darkWater, brightWater, light * 0.65);
         color = mix(color, vec3(0.58, 0.46, 0.34), step(0.5, uTone) * (1.0 - step(1.5, uTone)) * 0.27);
         color = mix(color, vec3(0.10, 0.22, 0.29) + light * 0.10, step(1.5, uTone) * 0.78);
@@ -214,7 +240,21 @@ function addDock(scene: THREE.Scene) {
     addMesh(dock, new THREE.BoxGeometry(1.8, 0.045, 0.16), edge,
       4.6 + i * 0.75, 0.2 + i * 0.24, 11.48);
   }
-  addMesh(dock, new THREE.BoxGeometry(5.4, 0.7, 4.2), stone, 8.6, 0.52, 10.3);
+  const shore = new THREE.Shape();
+  shore.moveTo(6.35, 7.9);
+  shore.lineTo(8.2, 7.4);
+  shore.lineTo(11.7, 7.1);
+  shore.lineTo(14.1, 8.4);
+  shore.lineTo(14.6, 10.9);
+  shore.lineTo(13.2, 13.1);
+  shore.lineTo(9.9, 13.7);
+  shore.lineTo(6.55, 12.8);
+  shore.lineTo(6.35, 7.9);
+  const bank = addMesh(dock, new THREE.ExtrudeGeometry(shore, {
+    depth: 0.74, steps: 1, bevelEnabled: true,
+    bevelThickness: 0.12, bevelSize: 0.32, bevelSegments: 2,
+  }), stone, 0, 0.78, 0);
+  bank.rotation.x = Math.PI / 2;
   const railing = new THREE.MeshStandardMaterial({ color: '#6e5d43', roughness: 1 });
   for (let i = 0; i < 6; i++) {
     addMesh(dock, new THREE.CylinderGeometry(0.065, 0.08, 1.2, 6),
@@ -225,11 +265,11 @@ function addDock(scene: THREE.Scene) {
   const rock = new THREE.MeshStandardMaterial({ color: '#9b9b85', roughness: 1, flatShading: true });
   const random = randomSequence(77);
   for (let i = 0; i < 17; i++) {
-    const x = 5.8 + random() * 9.6;
-    const z = 7.8 + random() * 8.5;
+    const x = 5.7 + random() * 9;
+    const z = 7.4 + random() * 6.2;
     const fragment = addMesh(dock, new THREE.IcosahedronGeometry(0.35 + random() * 0.42, 0),
       rock, x, -0.05, z);
-    fragment.scale.y = 0.48;
+    fragment.scale.set(1 + random() * 0.6, 0.32, 0.7 + random() * 0.6);
   }
 }
 
@@ -308,9 +348,9 @@ const ENTRANCE_CAMERA: readonly CameraStop[] = [
   { progress: 0, eye: [-8.6, 6.7, 25.4], focus: [-2.35, 3, 0], frameWidth: 17.5 },
   { progress: 0.25, eye: [3.6, 6.2, 26], focus: [-2.3, 2.7, 0.5], frameWidth: 17 },
   { progress: 0.49, eye: [4.2, 4.6, 23], focus: [-3.2, 1.6, 0.5], frameWidth: 10.5 },
-  { progress: 0.66, eye: [7.8, 4.9, 22], focus: [-0.4, 1.6, 5.4], frameWidth: 15 },
-  { progress: 0.87, eye: [9.1, 3.8, 18.6], focus: [3.4, 1.1, 9], frameWidth: 10.5 },
-  { progress: 1, eye: [8.2, 3.8, 18.4], focus: [4.6, 1.2, 9.5], frameWidth: 10 },
+  { progress: 0.66, eye: [7.8, 5.7, 26], focus: [-0.4, 2.5, 4.5], frameWidth: 17 },
+  { progress: 0.87, eye: [9, 5.5, 27], focus: [1.6, 2.2, 5.4], frameWidth: 17 },
+  { progress: 1, eye: [6.2, 5.8, 28], focus: [1.8, 2.25, 5.2], frameWidth: 17 },
 ];
 
 const FINALE_CAMERA: readonly CameraStop[] = [
@@ -368,16 +408,16 @@ export class ElephantIntroScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.35 : 1.8));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.23;
+    this.renderer.toneMappingExposure = 1.1;
     this.renderer.domElement.setAttribute('aria-hidden', 'true');
     this.renderer.domElement.className = 'elephant-canvas';
     container.appendChild(this.renderer.domElement);
     const night = time === 'night';
     const dusk = time === 'dusk';
-    this.scene.background = new THREE.Color(night ? '#203746' : dusk ? '#dcb99a' : '#dfdec9');
-    this.scene.fog = new THREE.Fog(night ? '#263d50' : dusk ? '#c5b5a5' : '#c6d1c6', 35, 112);
-    this.scene.add(new THREE.HemisphereLight(night ? '#8da6ca' : '#fff8e4', '#738d82', night ? 0.85 : 2.0));
-    const light = new THREE.DirectionalLight(night ? '#b6c8e5' : dusk ? '#f8c88d' : '#fff0cb', night ? 0.75 : dusk ? 2.0 : 2.4);
+    this.scene.background = new THREE.Color(night ? '#203746' : dusk ? '#dec5a8' : '#dae6da');
+    this.scene.fog = new THREE.Fog(night ? '#263d50' : dusk ? '#c5b5a5' : '#bfd7cc', 35, 112);
+    this.scene.add(new THREE.HemisphereLight(night ? '#8da6ca' : '#fff8e4', '#738d82', night ? 0.85 : 1.35));
+    const light = new THREE.DirectionalLight(night ? '#b6c8e5' : dusk ? '#f8c88d' : '#fff0cb', night ? 0.75 : dusk ? 1.4 : 1.6);
     light.position.set(-12, 18, 16);
     this.scene.add(light);
     addDistance(this.scene);
@@ -498,10 +538,11 @@ export class ElephantIntroScene {
     this.frameCamera(p);
 
     const t = this.elapsedMs / 1000;
-    const travel = smooth((p - 0.23) / 0.58);
+    const travel = smooth((p - 0.13) / 0.65);
     const along = Math.max(0.001, Math.min(0.999, travel));
     const pos = this.route.getPoint(along);
     const tangent = this.route.getTangent(along);
+    this.boat.visible = p > 0.13;
     this.boat.position.copy(pos);
     this.boat.position.y += Math.sin(t * 2.7) * 0.022;
     this.boat.rotation.set(
@@ -510,19 +551,24 @@ export class ElephantIntroScene {
       Math.sin(t * 2.5) * 0.015,
     );
 
-    const disembark = smooth((p - 0.83) / 0.14);
-    const aboard = new THREE.Vector3(pos.x, pos.y + 0.34, pos.z - 0.35);
-    const ashore = new THREE.Vector3(5.55, 0.70, 10.35);
-    this.figure.position.copy(aboard).lerp(ashore, disembark);
-    this.figure.position.y += Math.sin(t * 4) * 0.02 * (1 - disembark);
-    this.figure.visible = p > 0.34;
+    const stepOffBoat = smooth((p - 0.83) / 0.055);
+    const stepUpOne = smooth((p - 0.885) / 0.052);
+    const stepUpTwo = smooth((p - 0.937) / 0.055);
+    const aboard = new THREE.Vector3(pos.x, pos.y + 0.28, pos.z - 0.35);
+    this.figure.position.copy(aboard)
+      .lerp(new THREE.Vector3(4.28, 0.22, 10.08), stepOffBoat)
+      .lerp(new THREE.Vector3(5.31, 0.46, 10.23), stepUpOne)
+      .lerp(new THREE.Vector3(6.17, 0.71, 10.35), stepUpTwo);
+    this.figure.position.y += Math.sin(t * 4) * 0.012 * (1 - stepOffBoat);
+    this.figure.visible = p > 0.28;
     const portrait = this.figure.children.find((child): child is THREE.Sprite => child instanceof THREE.Sprite);
-    if (portrait) portrait.material.opacity = clamp01((p - 0.34) * 14);
+    if (portrait) portrait.material.opacity = clamp01((p - 0.28) * 14);
 
     if (this.sequence === 'finale') {
+      this.boat.visible = true;
       this.boat.position.set(3.1, 0.19, 10);
       this.boat.rotation.set(0, 0.68, 0);
-      this.figure.position.set(5.55, 0.70, 10.35);
+      this.figure.position.set(6.17, 0.71, 10.35);
       this.figure.visible = true;
       if (portrait) portrait.material.opacity = 1;
     }

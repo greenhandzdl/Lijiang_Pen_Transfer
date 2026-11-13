@@ -506,3 +506,33 @@
 @media(prefers-reduced-motion:reduce){
   .elephant-progress-label button{transition:none;}
 }
+
+
+/* Cinematic composition polish after rendered 16:9 / 9:16 screenshots. */
+.elephant-caption{left:clamp(26px,8.4vw,150px);top:37%;max-width:min(445px,82vw)}
+.elephant-caption h1{font-size:clamp(43px,5.5vw,78px);letter-spacing:.13em}
+.elephant-time-morning .elephant-papergrain,
+.elephant-time-noon .elephant-papergrain{
+  background:
+    linear-gradient(90deg,rgba(230,233,212,.88) 0%,rgba(234,237,217,.72) 15%,rgba(229,233,215,.12) 51%,transparent 72%),
+    linear-gradient(0deg,rgba(236,228,206,.7),transparent 22%),
+    linear-gradient(180deg,rgba(243,240,223,.32),transparent 18%);
+}
+.elephant-time-dusk .elephant-papergrain{
+  background:
+    linear-gradient(90deg,rgba(237,219,191,.87) 0%,rgba(241,217,189,.55) 20%,transparent 70%),
+    linear-gradient(0deg,rgba(223,194,168,.55),transparent 22%);
+}
+@media(max-width:700px){
+  .elephant-caption{left:20px;top:26%;max-width:calc(100vw - 40px);}
+  .elephant-caption h1{font-size:clamp(35px,9.3vw,49px);letter-spacing:.1em;}
+  .elephant-caption-index{margin-bottom:8px;}
+  .elephant-variant-finale .elephant-caption{top:23%;}
+  .elephant-time-morning .elephant-papergrain,
+  .elephant-time-noon .elephant-papergrain{
+    background:linear-gradient(180deg,
+      rgba(231,236,218,.72),rgba(234,237,219,.54) 24%,
+      rgba(233,236,221,.08) 48%,transparent 75%),
+      linear-gradient(0deg,rgba(233,226,203,.4),transparent 18%);
+  }
+}

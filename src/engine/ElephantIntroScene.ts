@@ -320,7 +320,7 @@ const FINALE_CAMERA: readonly CameraStop[] = [
 ];
 
 function interpolateCamera(stops: readonly CameraStop[], progress: number) {
-  const index = Math.max(0, stops.findIndex((stop, i) =>
+  const index = Math.max(0, stops.findIndex((_, i) =>
     i < stops.length - 1 && progress <= stops[i + 1].progress));
   const start = stops[index];
   const end = stops[Math.min(stops.length - 1, index + 1)];

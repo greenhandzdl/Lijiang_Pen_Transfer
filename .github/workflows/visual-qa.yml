@@ -1,0 +1,44 @@
+name: Three.js visual QA captures
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/visual-qa.yml
+      - scripts/visual-smoke.mjs
+      - src/app/ElephantIntro.tsx
+      - src/engine/ElephantIntroScene.ts
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  camera-captures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install app and browser driver
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund playwright-core@1.56.1
+      - name: Build project
+        run: npm run build
+      - name: Inspect Chromium binary
+        run: which google-chrome || which chromium || which chromium-browser
+      - name: Capture desktop and portrait Three.js frames
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: node scripts/visual-smoke.mjs
+      - name: Save review snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: threejs-camera-frames
+          path: visual-qa/*.jpg
+          retention-days: 7
+          if-no-files-found: ignore

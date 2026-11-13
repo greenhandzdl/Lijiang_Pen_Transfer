@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import type { IntroBeat, IntroSequence } from '../engine/ElephantIntroScene';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import type { ElephantIntroScene, IntroBeat, IntroSequence } from '../engine/ElephantIntroScene';
 import { artworkForTime, type TimeOfDay } from '../content/places';
 
 type Props = {
@@ -16,14 +16,36 @@ const CHAPTERS: Record<IntroBeat, { number: string; title: string; subtitle: str
   poem: { number: '序 · 终', title: '人已入画', subtitle: '山水待你，以步为笔' },
 };
 
+const STOPS = [
+  { position: 0, name: '观山' },
+  { position: 0.28, name: '穿洞' },
+  { position: 0.61, name: '靠岸' },
+  { position: 0.87, name: '入画' },
+] as const;
+const END_STOPS = [{ position: 0, name: '回望' }, { position: 0.58, name: '题诗' }] as const;
+const clock = (seconds: number) => {
+  const number = Math.floor(seconds);
+  return String(Math.floor(number / 60)).padStart(2, '0') + ':' +
+    String(number % 60).padStart(2, '0');
+};
+
 export default function ElephantIntro({ onComplete, time, variant = 'entrance', onBack }: Props) {
   const mount = useRef<HTMLDivElement | null>(null);
+  const engineRef = useRef<ElephantIntroScene | null>(null);
+  const progressRef = useRef(0);
+  const resumeAfterDrag = useRef(false);
+  const backRef = useRef(onBack);
+  const [progress, setProgress] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const duration = variant === 'finale' ? 9 : 15.2;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const completeRef = useRef(onComplete);
   const completed = useRef(false);
   const [beat, setBeat] = useState<IntroBeat>('orbit');
   const [error, setError] = useState('');
 
   completeRef.current = onComplete;
+  backRef.current = onBack;
   const finish = () => {
     if (completed.current) return;
     completed.current = true;
@@ -32,7 +54,7 @@ export default function ElephantIntro({ onComplete, time, variant = 'entrance', 
 
   useEffect(() => {
     let disposed = false;
-    let instance: { dispose: () => void } | null = null;
+    let instance: ElephantIntroScene | null = null;
     // Reduce-motion users should not be subjected to a forced camera tour.
     if (variant === 'entrance' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       completeRef.current();
@@ -49,9 +71,19 @@ export default function ElephantIntro({ onComplete, time, variant = 'entrance', 
       try {
         instance = new ElephantIntroScene(
           mount.current, import.meta.env.BASE_URL + 'art/', time, variant,
-          { onBeat: (next) => { if (!disposed) setBeat(next); },
-            onComplete: () => { if (!disposed) completeRef.current(); } },
+          {
+            onBeat: (next) => { if (!disposed) setBeat(next); },
+            onProgress: (next) => {
+              if (disposed) return;
+              progressRef.current = next;
+              setProgress(next);
+              if (next >= 1) setPlaying(false);
+            },
+            onComplete: () => { if (!disposed) completeRef.current(); },
+          },
         );
+        engineRef.current = instance;
+        setPlaying(instance.getPlaying());
       } catch (cause) {
         console.warn('Three.js intro could not initialise', cause);
         if (!disposed) setError('当前设备暂时不能运行立体序章，可直接进入高清画卷。');
@@ -64,16 +96,63 @@ export default function ElephantIntro({ onComplete, time, variant = 'entrance', 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        completeRef.current();
+        if (variant === 'finale' && backRef.current) backRef.current();
+        else completeRef.current();
       }
     };
+    const pauseWhenHidden = () => {
+      if (document.hidden) {
+        engineRef.current?.setPlaying(false);
+        setPlaying(false);
+      }
+    };
+    document.addEventListener('visibilitychange', pauseWhenHidden);
     window.addEventListener('keydown', onKeyDown);
     return () => {
       disposed = true;
       window.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('visibilitychange', pauseWhenHidden);
+      engineRef.current = null;
       instance?.dispose();
     };
-  }, []);
+  }, [time, variant]);
+
+  const seek = (value: number) => {
+    const next = Math.max(0, Math.min(1, value));
+    engineRef.current?.seek(next);
+    progressRef.current = next;
+    setProgress(next);
+    if (next >= 1) setPlaying(false);
+  };
+  const jumpTo = (value: number) => {
+    engineRef.current?.setPlaying(false);
+    resumeAfterDrag.current = false;
+    setPlaying(false);
+    seek(value);
+  };
+  const startDragging = () => {
+    resumeAfterDrag.current = engineRef.current?.getPlaying() ?? false;
+    engineRef.current?.setPlaying(false);
+    setPlaying(false);
+  };
+  const endDragging = () => {
+    const resume = resumeAfterDrag.current && progressRef.current < 0.999;
+    resumeAfterDrag.current = false;
+    if (resume) {
+      engineRef.current?.setPlaying(true);
+      setPlaying(true);
+    }
+  };
+  const togglePlayback = () => {
+    const instance = engineRef.current;
+    if (!instance) return;
+    instance.setPlaying(!instance.getPlaying());
+    setPlaying(instance.getPlaying());
+    progressRef.current = instance.getProgress();
+    setProgress(progressRef.current);
+  };
+  const stops = variant === 'finale' ? END_STOPS : STOPS;
+  const atEnd = progress >= 0.995;
 
   const chapter = CHAPTERS[beat];
   return (
@@ -99,17 +178,38 @@ export default function ElephantIntro({ onComplete, time, variant = 'entrance', 
         )}
       </section>
       <footer className="elephant-footer">
+        {variant === 'entrance' && atEnd && <button className="elephant-enter-now" type="button" onClick={finish}>继续游历 · 进入长卷 ↗</button>}
         {variant === 'finale' && <div className="elephant-ending-actions">
           <button type="button" onClick={onBack}>返回画卷</button>
           <button type="button" onClick={finish}>完成游历 · 回到卷首</button>
         </div>}
-        <div className="elephant-progress-label">
-          <span>观山</span><span>穿洞</span><span>靠岸</span><span>入画</span>
+        <div className="elephant-progress-label" role="group" aria-label="跳转序章章节">
+          {stops.map((item, index) => (
+            <button type="button" key={item.name} onClick={() => jumpTo(item.position)}
+              aria-current={progress >= item.position && progress < (stops[index + 1]?.position ?? 1.01) ? 'step' : undefined}>
+              {item.name}
+            </button>
+          ))}
         </div>
-        <div className="elephant-progress" aria-label="序章播放进度">
-          <i />
+        <div className="elephant-scrubber">
+          <button type="button" className="elephant-play" onClick={togglePlayback}
+            disabled={Boolean(error) || reducedMotion}
+            aria-label={playing ? '暂停三维镜头' : atEnd ? '重播三维镜头' : '播放三维镜头'}>
+            {playing ? 'Ⅱ' : atEnd ? '↺' : '▶'}
+          </button>
+          <input type="range" min="0" max="1000" step="1"
+            value={Math.round(progress * 1000)}
+            aria-label={variant === 'finale' ? '拖动卷尾镜头进度' : '拖动象鼻山序章进度'}
+            aria-valuetext={clock(progress * duration) + ' / ' + clock(duration)}
+            onPointerDown={startDragging}
+            onPointerUp={endDragging}
+            onPointerCancel={endDragging}
+            onChange={(event) => seek(Number(event.target.value) / 1000)}
+            disabled={Boolean(error) || reducedMotion}
+            style={{ '--intro-progress': String(progress * 100) + '%' } as CSSProperties} />
+          <time className="elephant-timecode">{clock(progress * duration)} / {clock(duration)}</time>
         </div>
-        <small>三维山水意象演绎 · 不代表景区实际游船航线</small>
+        <small>拖动时间轴可回看镜头 · 三维山水意象演绎，并非景区实际航线</small>
       </footer>
       {error && (
         <div className="elephant-fallback" role="alert">
